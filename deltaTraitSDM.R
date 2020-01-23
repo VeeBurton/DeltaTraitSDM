@@ -12,23 +12,26 @@ library(broom)
 ###################
 
 # climatic and trait database for Fagus
-Fagus <- read.csv("~/R/DeltaTraitSDM-Code/Fagus_DeltaTraitSDM_H.csv",header=T)
+Fagus <- read.csv("~/R/DeltaTraitSDM/Fagus/Fagus_DeltaTraitSDM_H.csv",header=T)
 head(Fagus)
+str(Fagus)
 
 # Model that splits the climate of the site/climate of the provenance/interaction between both as fixed effects 
 # and keeps the provenance and trial/block/tree as random effects
 
 M1 <- lmer(log(H) ~ St_Age # height as a function of stand age
-           + St_Bio5_P # and max temp of warmest month
-           + St_Pet.max_T  # potential evapotranspiration - max?
+           + St_Bio5_P # stand max temp of warmest month (Provenance)
+           + St_Pet.max_T  # stand potential evapotranspiration - max? (Trial)
            + I(St_Bio5_P^2) # I() prevents conversion to factors
-           + I(St_Pet.max_T^2)  
-           + St_Age*St_Bio5_P 
-           + St_Age*St_Pet.max_T 
-           + St_Bio5_P*St_Pet.max_T 
+           + I(St_Pet.max_T^2)  # Stand PET max - (Trial)
+           + St_Age*St_Bio5_P # Stand age x stand max temp of warmest month - (Trial)
+           + St_Age*St_Pet.max_T # Stand age x stand PET max - (Trial)
+           + St_Bio5_P*St_Pet.max_T # Stand max temp of warmest month (Provenance) x stand PET max (Trial)
            + (1|Trial/Block/Tree_ID) # and trial location - RANDOM EFFECT
            + (1|ID_ProvCode), # and provenance - RANDOM EFFECT
            Fagus) # data
+
+# check if P and T at end of variables stand for Provenance and Trial?
 
 summary(M1)
 
