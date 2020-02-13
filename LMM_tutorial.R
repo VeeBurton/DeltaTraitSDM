@@ -12,9 +12,12 @@ str(Fagus)
 dim(Fagus) # 203105 observations, 77 variables
 
 # correlation matrix
-Fagus.s <- Fagus[,12:77]
+Fagus.s <- Fagus[,-c(15:77)]
+head(Fagus.s)
 Fagus.s <- na.omit(Fagus.s)
-Fagus.cor <- cor(Fagus.s, method = c("spearman"))
+str(Fagus.s)
+Fagus.s <- Fagus.s[,-c(1:11)]
+Fagus.cor <- cor(Fagus.s[,-c(1:3)], method = c("spearman"))
 library(corrplot)
 corrplot(Fagus.cor)
 
