@@ -29,7 +29,7 @@ ggplot(aes(x, height), data = sp) + geom_point() +
 boxplot(height ~ x, data = sp)
 
 # Choosing variables
-# Stepwise modeling
+# Stepwise modelling
 # Combination of variables (PCA etc)
 # Look at variable colinearity
 
