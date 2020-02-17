@@ -22,67 +22,72 @@ summary(Fagus)
 Fagus<-Fagus[,-c(11:13)] # lots of NAs
 Fagus<-na.omit(Fagus)
 
+# detect multicollinearity using VIF 
+# split the data into training and test set
+training.samples <- Fagus$H %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- Fagus[training.samples, ]
+test.data <- Fagus[-training.samples, ]
+
+# build a regression model with all variables
+model1 <- lm(H ~., data = train.data)
+# make predictions
+predictions <- model1 %>% predict(test.data)
+# model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$H),
+  R2 = R2(predictions, test.data$H)
+)
+
+# detect multicollinearity
+car::vif(model1)
+# the linearly dependent variables
+ld.vars <- attributes(alias(model1)$Complete)$dimnames[[1]]
 
 #####################################################
 # variance and covariance
 #####################################################
 
-str(nordic_clim)
-nordic_clim$Elev<-as.numeric(nordic_clim$Elev)
-nordic_clim<-na.omit(nordic_clim)
+str(Fagus)
+Fagus$Year_measurement<-as.numeric(Fagus$Year_measurement)
+Fagus$Tree_ID<-as.numeric(Fagus$Tree_ID)
+Fagus$ProvCode<-as.numeric(Fagus$ProvCode)
+Fagus$Block<-as.numeric(Fagus$Block)
+Fagus$Tree<-as.numeric(Fagus$Tree)
+Fagus$YearPlantation<-as.numeric(Fagus$YearPlantation)
+Fagus$Age<-as.numeric(Fagus$Age)
+#Fagus.s<-Fagus[,-c(1,3)]
+str(Fagus)
 
 library(corrplot)
-var(nordic_clim[,c(2,3,4,5,8,9,10,11,12,13)])
-cor(nordic_clim[,c(2,3,4,5,8,9,10,11,12,13)])
-corrplot(cor(nordic_clim[,c(2,3,4,5,8,9,10,11,12,13)]), method = "ellipse")
+var(Fagus.s)
+cor(Fagus.s)
+corrplot(cor(Fagus.s), method = "ellipse")
 
-pairs(nordic_clim[,c(2,3,4,5,8,9,10,11,12,13)], col=nordic_clim$Country)
-
-library(lattice)
-splom(~ nordic_clim[,c(2,3,4,5,8,9,10,11,12,13)], col=nordic_clim$Country, pch=16)
-
-library(GGally)
-ggpairs(data=nordic_clim, columns = c(2,3,4,5,8,9,10,11,12,13), mapping = aes(color=Country))
-
-library(scatterplot3d)
-scatterplot3d(nordic_clim[,c(2,3,4,5,8,9,10,11,12,13)], color = as.numeric(nordic_clim$Country))
 
 #####################################################
 # PCA
 #####################################################
-nordic.sub<-nordic_clim[,-c(1,2,7,8,9)]
-nordic.sub<-na.omit(nordic.sub)
-nordic.pca <- princomp(nordic.sub, cor=TRUE, scores=TRUE)
-summary(nordic.pca)
+Fagus.s<-Fagus.s[,-c(11:55)]
+corrplot(cor(Fagus.s), method = "ellipse")
+Fagus.s<-Fagus.s[complete.cases(Fagus.s),]
+fagus.pca <- prcomp(Fagus.s, cor=TRUE, scores=TRUE) # https://stackoverflow.com/questions/26396356/princomp-error-in-r-covariance-matrix-is-not-non-negative-definite
+summary(fagus.pca)
 
 # choose components to use based on proportion of variance explained
-screeplot(nordic.pca, type = "lines")
+screeplot(fagus.pca, type = "lines")
 # or by cumulative variance
 # Variance explained
-pc.var <- nordic.pca$sdev^2
+pc.var <- fagus.pca$sdev^2
 # Proportion of variation
 pc.pvar <- pc.var / sum(pc.var)
 # Cumulative proportion
 plot(cumsum(pc.pvar), type = 'b')
 abline(h = 0.9)
 
-attributes(nordic.pca)
-loadings(nordic.pca)
-
-# plotting scores
-scores <- data.frame(nordic.pca$scores)
-ggplot(data = scores, aes(x = Comp.1, y = Comp.1, label = rownames(scores))) +
-  geom_text(size = 4, col = "steelblue")
-
-elev <- factor(nordic.sub$Elev)
-ggplot(data = scores, aes(x = Comp.1, y = Comp.2, label = rownames(scores),
-                          color = elev)) + geom_text(size = 1)+ theme(legend.position="none")
-
-tn <- factor(nordic.sub$TN_jan_30yr)
-ggplot(data = scores, aes(x = Comp.1, y = Comp.2, label = rownames(scores),
-                          color = tn)) + geom_text(size = 1)+ theme(legend.position="none")
+attributes(fagus.pca)
+loadings(fagus.pca)
 
 library(factoextra)
-fviz_pca_ind(nordic.pca)
-fviz_pca_var(nordic.pca)
-fviz_pca_biplot(nordic.pca)
+fviz_pca_ind(fagus.pca)
+fviz_pca_var(fagus.pca)
+fviz_pca_biplot(fagus.pca)
