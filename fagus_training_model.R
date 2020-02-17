@@ -192,7 +192,19 @@ qqline(resid(mixed.lmer3)) # points should fall on line - looks better.
           panel.spacing = unit(2, "lines"))  # adding space between panels
 )
 
-# random slopes AND random intercept
-mixed.ranslope <- lmer(H ~ bio14_T_2 + (1 + bio14_T_2|Trial/Block/Tree_ID), data = Fagus) 
-summary(mixed.slope)
 
+# some useful code from datacamp
+tidy(mixed.lmer3)
+# save the model predictions as a column to the original data.frame
+Fagus.s$lmerPredict <- predict(mixed.lmer3)
+# plot the original data
+ggFagus2 <- ggplot( Fagus.s, aes(x = St_Bio14_P, y = H) ) +
+  geom_point()+
+  theme_minimal() +
+  geom_abline(data = Fagus.s,
+              aes(intercept = intercept, slope = slope))
+# use the predicted values to plot the new outputs
+ggFagus2 +
+  geom_line( data =  Fagus,
+             aes(x = x, y = lmerPredict, color = Trial),
+             linetype = 2)
