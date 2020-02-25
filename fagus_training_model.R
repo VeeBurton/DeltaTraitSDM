@@ -28,12 +28,6 @@ Fagus<-na.omit(Fagus)
 
 # look at data
 
-# correlation matrix
-str(Fagus)
-Fagus.cor <- cor(Fagus[,-c(1,3)], method = c("spearman")) # all variables expect factors
-Fagus.cor<-as.data.frame(Fagus.cor)
-#corrplot(Fagus.cor)
-
 # detect multicollinearity using VIF 
 # split the data into training and test set
 training.samples <- Fagus$H %>% createDataPartition(p = 0.8, list = FALSE)
@@ -49,91 +43,98 @@ data.frame(
   RMSE = RMSE(predictions, test.data$H),
   R2 = R2(predictions, test.data$H)
 )
+model1_summary<-tidy(model1)
 
 # detect multicollinearity
-car::vif(model1)
-# Error in vif.default(model1) : there are aliased coefficients in the model
-# Use the 'alias' function in R to see which variables are linearly dependent. Remove the dependent variables and the vif function should work correctly. https://stackoverflow.com/questions/28885160/vifs-returning-aliased-coefficients-in-r
-
+car::vif(model1) # there are aliased coefficients in the model
+summary(model1)$coeff
+length(unique(summary(model1)$coeff))
+alias(model1)$Complete
 # the linearly dependent variables
 ld.vars <- attributes(alias(model1)$Complete)$dimnames[[1]]
+#Fagus$Year_measurement<-NULL
+#Fagus$YearPlantation<-NULL
+#Fagus$Trial<-NULL
+#Fagus$Tree_ID<-NULL
+#Fagus$ProvCode<-NULL
 
-# remove the linearly dependent variables 
-Fagus<-Fagus[ , !(names(Fagus) %in% ld.vars)]
-dim(Fagus)
+#####################################################
+# variance and covariance
+#####################################################
 
-training.samples <- Fagus$H %>% createDataPartition(p = 0.8, list = FALSE)
-train.data  <- Fagus[training.samples, ]
-test.data <- Fagus[-training.samples, ]
+str(Fagus)
+Fagus$Year_measurement<-as.numeric(Fagus$Year_measurement)
+Fagus$Tree_ID<-as.numeric(Fagus$Tree_ID)
+Fagus$ProvCode<-as.numeric(Fagus$ProvCode)
+Fagus$Block<-as.numeric(Fagus$Block)
+Fagus$Tree<-as.numeric(Fagus$Tree)
+Fagus$YearPlantation<-as.numeric(Fagus$YearPlantation)
+Fagus$Age<-as.numeric(Fagus$Age)
+str(Fagus)
 
+Fagus.s<-Fagus[,-c(1,3)] # non-numeric
+var(Fagus.s)
+cor(Fagus.s)
+corrplot(cor(Fagus.s), method = "ellipse")
+
+# just standardised variables
+Fagus.s<-Fagus.s[,c(3,4,5,8,55:71)]
+corrplot(cor(Fagus.s), method = "ellipse")
+
+training.samples <- Fagus.s$H %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- Fagus.s[training.samples, ]
+test.data <- Fagus.s[-training.samples, ]
+
+# build a regression model with all variables
 model2 <- lm(H ~., data = train.data)
-# Make predictions
+# make predictions
 predictions <- model2 %>% predict(test.data)
-# Model performance
+# model performance
 data.frame(
   RMSE = RMSE(predictions, test.data$H),
   R2 = R2(predictions, test.data$H)
 )
+model2_summary<-tidy(model2)
 
 # detect multicollinearity
-car::vif(model2)
-# same issue.
-
-# remove random effects for now
-fagus<-Fagus[,-c(1:7)] 
-str(fagus)
-training.samples <- fagus$H %>% createDataPartition(p = 0.8, list = FALSE)
-train.data  <- fagus[training.samples, ]
-test.data <- fagus[-training.samples, ]
-
-model3 <- lm(H ~., data = train.data)
-# Make predictions
-predictions <- model3 %>% predict(test.data)
-# Model performance
-data.frame(
-  RMSE = RMSE(predictions, test.data$H),
-  R2 = R2(predictions, test.data$H)
-)
+car::vif(model2) 
+summary(model2)$coeff
 
 # detect multicollinearity
-VIF <- car::vif(model3) %>%
+VIF <- car::vif(model2) %>%
   as.list() %>% 
   as.data.frame() %>% 
   gather(key = 'variable', value = 'VIF') %>% 
   arrange(desc(VIF))
 
 # remove variables with high VIF (above 5-10)
-best.vars<-unique(VIF$variable[which(VIF$VIF<50)])
+best.vars<-unique(VIF$variable[which(VIF$VIF<10)])
 best.vars
 
-# filter to just vars with low(ish) VIF
-fagus.mod<-Fagus[,c(1:8,18,11,19,16,21,12)]
+# filter to just vars with low VIF
+fagus.mod<-Fagus[,c(1,3,4,6,10,57,69,72,73)]
 str(fagus.mod)
 
 #marta_mod <- lmer(log(H) ~ St_Age + St_Pet.max_P + St_Bio13_T + I(St_Pet.max_P^2) + I(St_Bio13_T^2) +
              #St_Age*St_Pet.max_P + St_Age*St_Bio13_T + St_Pet.max_P*St_Bio13_T + 
              #(1|Trial/Block/Tree_ID) + (1|ID_ProvCode), Fagus)
 
-fm1 <- lmer(H ~ pet.min_T + (1|Trial/Block/Tree_ID) + (1|ID_ProvCode), fagus.mod) # trial site min PET
-summary(fm1)
-par(mfrow = c(2,2))
-plot(fm1)
-
-
 # use coding club tutorial, replacing dragons dataset with fagus
 # https://ourcodingclub.github.io/2017/03/15/mixed-models.html
 # look at distribution of response variable
-hist(Fagus$H)
+hist(fagus.mod$H)
 # it is good practice to standardise your explanatory variables before proceeding...
 # so that they have a mean of zero (“centering”) and standard deviation of one (“scaling”) 
 # It ensures that the estimated coefficients are all on the same scale, making it easier to compare effect sizes.
+fagus.mod$St_H <- scale(fagus.mod$H, center = TRUE, scale = TRUE) # variable with lowest VIF, precipitation of driest month?
+hist(fagus.mod$St_H)
+# or log
+log(fagus.mod$H)
 
-Fagus$bio14_T_2 <- scale(Fagus$bio14_T, center = TRUE, scale = TRUE) # variable with lowest VIF, precipitation of driest month?
-hist(Fagus$bio14_T_2)
-basic.lm <- lm(H ~ bio14_T_2, data = Fagus)
+basic.lm <- lm(H ~ St_Age, data = fagus.mod)
 summary(basic.lm)
 # plot the data
-(prelim_plot <- ggplot(Fagus, aes(x = bio14_T_2, y = H)) +
+(prelim_plot <- ggplot(fagus.mod, aes(x =St_Age, y = H)) +
     geom_jitter() +
     geom_smooth(method = "lm"))
 # plot residuals
@@ -142,69 +143,150 @@ plot(basic.lm, which = 1) # red line should be flat like the dashed grey line
 plot(basic.lm, which = 2) # points should fall on diagonal line
 
 # check for data independence - essentially checking if need to account for random effects
-boxplot(H ~ Trial, data = Fagus)
-(colour_plot <- ggplot(Fagus, aes(x = bio14_T_2, y = H, colour = Trial)) +
+boxplot(H ~ Trial, data = fagus.mod)
+(colour_plot <- ggplot(fagus.mod, aes(x = St_Age, y = H, colour = Trial)) +
     geom_point(size = 2) +
     theme_classic() +
     theme(legend.position = "none"))
 
-(split_plot <- ggplot(aes(bio14_T_2, H), data = Fagus) + 
+(split_plot <- ggplot(aes(St_Age, H), data = fagus.mod) + 
     geom_point() + 
-    facet_wrap(~ Trial) + # create a facet for each mountain range
-    xlab("precipitation driest month") + 
+    facet_wrap(~ Trial) + # create a facet for each trial
+    xlab("age") + 
     ylab("height"))
 
 # include trial as a fixed effect
-trial.lm <- lm(H ~ bio14_T_2 + Trial, data = Fagus)
-summary(trial.lm)
+trial.lm <- lm(H ~ St_Age + Trial, data = fagus.mod)
+trial.lm_summary<-tidy(trial.lm)
 
 # as a random effect
-mixed.lmer <- lmer(H ~ bio14_T_2 + (1|Trial), data = Fagus)
-summary(mixed.lmer)
+mixed.lmer <- lmer(H ~ St_Age + (1|Trial), data = fagus.mod)
+mixed.lmer_summary<-tidy(mixed.lmer)
 plot(mixed.lmer) 
 qqnorm(resid(mixed.lmer))
 qqline(resid(mixed.lmer)) # points should fall on line
 
 # account for nesting
-mixed.lmer2 <- lmer(H ~ bio14_T_2 + (1|Trial/Block/Tree_ID), data=Fagus)
-summary(mixed.lmer2)
+mixed.lmer2 <- lmer(H ~ St_Age + (1|Trial/Block/Tree_ID), data=fagus.mod)
+mixed.lmer2_summary<-tidy(mixed.lmer2)
 plot(mixed.lmer2) 
 qqnorm(resid(mixed.lmer2))
 qqline(resid(mixed.lmer2)) # points should fall on line
 
-# 22337/(22337 + 604 + 9292) # ~69 %
-# trials explain 69% of the variation
-# so the differences between trials explain ~69% of the variance that’s “left over” after the variance explained by bio14.
+summary(mixed.lmer2)
+# 3866/(3866 + 3149 + 482 + 2473) # ~38 %
+# trials explain 38% of the variation
+# so the differences between trials explain ~38% of the variance that’s “left over” after the variance explained by Age.
 
 # account for nesting and provenance
-mixed.lmer3 <- lmer(H ~ bio14_T_2 + (1|Trial/Block/Tree_ID) + (1|ID_ProvCode), data=Fagus)
-summary(mixed.lmer3)
+mixed.lmer3 <- lmer(H ~ St_Age + (1|Trial/Block/Tree_ID) + (1|ID_ProvCode), data=fagus.mod)
+mixed.lmer3_summary<-tidy(mixed.lmer3)
 plot(mixed.lmer3) 
 qqnorm(resid(mixed.lmer3))
-qqline(resid(mixed.lmer3)) # points should fall on line - looks better. 
+qqline(resid(mixed.lmer3)) # points should fall on line 
 
-(mm_plot <- ggplot(Fagus, aes(x = bio14_T_2, y = H, colour = Trial)) +
-    facet_wrap(~Trial, nrow=2) +   # a panel for each trial
+(mm_plot <- ggplot(fagus.mod, aes(x = St_Age, y = H, colour = Trial)) +
+    facet_wrap(~Trial) +   # a panel for each trial
     geom_point(alpha = 0.5) +
     theme_classic() +
-    geom_line(data = cbind(Fagus, pred = predict(mixed.lmer3)), aes(y = pred), size = 1) +  # adding predicted line from mixed model 
+    geom_line(data = cbind(fagus.mod, pred = predict(mixed.lmer3)), aes(y = pred), size = 1) +  # adding predicted line from mixed model 
     theme(legend.position = "none",
           panel.spacing = unit(2, "lines"))  # adding space between panels
 )
 
 
 # some useful code from datacamp
-tidy(mixed.lmer3)
+# tidy(mixed.lmer3)
 # save the model predictions as a column to the original data.frame
-Fagus.s$lmerPredict <- predict(mixed.lmer3)
+fagus.mod$lmerPredict <- predict(mixed.lmer3)
 # plot the original data
-ggFagus2 <- ggplot( Fagus.s, aes(x = St_Bio14_P, y = H) ) +
-  geom_point()+
-  theme_minimal() +
-  geom_abline(data = Fagus.s,
-              aes(intercept = intercept, slope = slope))
+#ggFagus2 <- ggplot(fagus.mod, aes(x = St_Age, y = H)) +
+  #geom_point()+
+  #theme_minimal() +
+  #geom_abline(data = fagus.mod,
+              #aes(intercept = intercept, slope = slope))
 # use the predicted values to plot the new outputs
-ggFagus2 +
-  geom_line( data =  Fagus,
-             aes(x = x, y = lmerPredict, color = Trial),
-             linetype = 2)
+#ggFagus2 +
+  #geom_line( data = fagus.mod,
+             #aes(x = x, y = lmerPredict, color = Trial),
+             #linetype = 2)
+
+library(ggeffects)
+
+# Extract the prediction data frame
+pred.mm <- ggpredict(mixed.lmer3, terms = c("St_Age"))  # this gives overall predictions for the model
+
+# Plot the predictions 
+
+(ggplot(pred.mm) + 
+    geom_line(aes(x = x, y = predicted)) +          # slope
+    geom_ribbon(aes(x = x, ymin = predicted - std.error, ymax = predicted + std.error), 
+                fill = "lightgrey", alpha = 0.5) +  # error band
+    geom_point(data = fagus.mod,                      # adding the raw data (scaled values)
+               aes(x = St_Age, y = H, colour = Trial)) + 
+    labs(x = "Age", y = "Height", 
+         title = "Age affects height across trials") + 
+    theme_minimal()
+)
+
+ggpredict(mixed.lmer3, terms = c("St_Age", "Trial"), type = "re") %>% 
+  plot() +
+  labs(x = "Age", y = "Height", title = "Effect of age on height in Beech") + 
+  theme_minimal()
+
+library(stargazer)
+stargazer(mixed.lmer3, type = "text",
+          digits = 3,
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          digit.separator = "")
+
+library(broom) # also useful for looking at results
+
+tidy()
+augment(mixed.lmer3)
+glance(mixed.lmer3)
+
+td <- tidy(mixed.lmer3, conf.int = TRUE)
+ggplot(td, aes(estimate, term, color = term)) +
+  geom_point() +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high)) +
+  geom_vline()
+
+tidied_cv <- tidy(mixed.lmer3)
+glance_cv <- glance(mixed.lmer3)
+ggplot(tidied_cv, aes(lambda, estimate)) + geom_line(color = "red") +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .2) +
+  scale_x_log10() +
+  geom_vline(xintercept = glance_cv$lambda.min) +
+  geom_vline(xintercept = glance_cv$lambda.1se, lty = 2)
+
+# model selection
+# Focus on your question, don’t just plug in and drop variables from a model haphazardly until you make something “significant”. 
+# Always choose variables based on biology/ecology
+# Define your goals and questions and focus on that
+# Also, don’t just put all possible variables in (i.e. don’t overfit)
+# Remember that as a rule of thumb, you need 10 times more data than parameters you are trying to estimate
+
+# Tests from worst to best:
+# Wald Z-tests
+# Wald t-tests (but LMMs need to be balanced and nested)
+# Likelihood ratio tests (via anova() or drop1())
+# MCMC or parametric bootstrap confidence intervals
+
+# e.g. anova
+anova(mixed.lmer2, mixed.lmer3)
+
+# Entire model selection
+# A few notes on the process of model selection. 
+#There are two ways here: (i) “top-down”, where you start with a complex model and gradually reduce it
+# (ii) “step up”, where you start with a simple model and add new variables to it. 
+# Unfortunately, you might arrive at different final models by using those strategies and so you need to be careful.
+# The model selection process recommended by Zuur et al. (2009) is a top-down strategy and goes as follows:
+# fit a full model (he even recommends “beyond optimal” i.e. more complex than you’d expect or want it to be)
+# sort out the random effects structure (use REML likelihoods or REML AIC or BIC)
+# sort out fixed effects structure (either use REML the F-statistic or the t-statistic or compare nested ML models - keep your random effects constant)
+# once you arrive at the final model present it using REML estimation
+
+# Be mindful of what you are doing, prepare the data well and things should be alright
+
+
