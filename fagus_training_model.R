@@ -20,10 +20,10 @@ library(ggplot2)
 # read in data
 Fagus <- read.table("./Fagus/Fagus_H_Final.txt",header=T)
 str(Fagus)
-Fagus<-Fagus[,-c(16:72)]
-Fagus<-Fagus[,-c(8:9)]
+head(Fagus)
+# just random effects and standardised variables
+Fagus<-Fagus[,c(1:7,12,119:135)]
 summary(Fagus)
-Fagus<-Fagus[,-c(11:13)] # lots of NAs
 Fagus<-na.omit(Fagus)
 
 # look at data
@@ -52,6 +52,7 @@ length(unique(summary(model1)$coeff))
 alias(model1)$Complete
 # the linearly dependent variables
 ld.vars <- attributes(alias(model1)$Complete)$dimnames[[1]]
+ld.vars
 #Fagus$Year_measurement<-NULL
 #Fagus$YearPlantation<-NULL
 #Fagus$Trial<-NULL
@@ -68,17 +69,13 @@ Fagus$Tree_ID<-as.numeric(Fagus$Tree_ID)
 Fagus$ProvCode<-as.numeric(Fagus$ProvCode)
 Fagus$Block<-as.numeric(Fagus$Block)
 Fagus$Tree<-as.numeric(Fagus$Tree)
-Fagus$YearPlantation<-as.numeric(Fagus$YearPlantation)
-Fagus$Age<-as.numeric(Fagus$Age)
+#Fagus$YearPlantation<-as.numeric(Fagus$YearPlantation)
+Fagus$St_Age<-as.numeric(Fagus$St_Age)
 str(Fagus)
 
 Fagus.s<-Fagus[,-c(1,3)] # non-numeric
 var(Fagus.s)
 cor(Fagus.s)
-corrplot(cor(Fagus.s), method = "ellipse")
-
-# just standardised variables
-Fagus.s<-Fagus.s[,c(3,4,5,8,55:71)]
 corrplot(cor(Fagus.s), method = "ellipse")
 
 training.samples <- Fagus.s$H %>% createDataPartition(p = 0.8, list = FALSE)
@@ -108,11 +105,11 @@ VIF <- car::vif(model2) %>%
   arrange(desc(VIF))
 
 # remove variables with high VIF (above 5-10)
-best.vars<-unique(VIF$variable[which(VIF$VIF<10)])
+best.vars<-unique(VIF$variable[which(VIF$VIF<12)])
 best.vars
 
 # filter to just vars with low VIF
-fagus.mod<-Fagus[,c(1,3,4,6,10,57,69,72,73)]
+fagus.mod<-Fagus[,c('H', best.vars)]
 str(fagus.mod)
 
 #marta_mod <- lmer(log(H) ~ St_Age + St_Pet.max_P + St_Bio13_T + I(St_Pet.max_P^2) + I(St_Bio13_T^2) +
@@ -142,22 +139,27 @@ plot(basic.lm, which = 1) # red line should be flat like the dashed grey line
 # look at qqplot
 plot(basic.lm, which = 2) # points should fall on diagonal line
 
+log.lm <- lm(log(H)~St_Age,data=fagus.mod)
+summary(log.lm)
+plot(log.lm, which = 1)
+plot(log.lm, which = 2)
+
 # check for data independence - essentially checking if need to account for random effects
-boxplot(H ~ Trial, data = fagus.mod)
-(colour_plot <- ggplot(fagus.mod, aes(x = St_Age, y = H, colour = Trial)) +
+boxplot(H ~ ProvCode, data = fagus.mod)
+(colour_plot <- ggplot(fagus.mod, aes(x = St_Age, y = H, colour = ProvCode)) +
     geom_point(size = 2) +
     theme_classic() +
     theme(legend.position = "none"))
 
 (split_plot <- ggplot(aes(St_Age, H), data = fagus.mod) + 
     geom_point() + 
-    facet_wrap(~ Trial) + # create a facet for each trial
+    facet_wrap(~ ProvCode) + # create a facet for each trial
     xlab("age") + 
     ylab("height"))
 
-# include trial as a fixed effect
-trial.lm <- lm(H ~ St_Age + Trial, data = fagus.mod)
-trial.lm_summary<-tidy(trial.lm)
+# include provenance as a fixed effect
+prov.lm <- lm(H ~ St_Age + ProvCode, data = fagus.mod)
+prov.lm_summary<-tidy(trial.lm)
 
 # as a random effect
 mixed.lmer <- lmer(H ~ St_Age + (1|Trial), data = fagus.mod)
@@ -167,7 +169,7 @@ qqnorm(resid(mixed.lmer))
 qqline(resid(mixed.lmer)) # points should fall on line
 
 # account for nesting
-mixed.lmer2 <- lmer(H ~ St_Age + (1|Trial/Block/Tree_ID), data=fagus.mod)
+mixed.lmer2 <- lmer(H ~ St_Age + (1|ProvCode/Block/Tree_ID), data=fagus.mod)
 mixed.lmer2_summary<-tidy(mixed.lmer2)
 plot(mixed.lmer2) 
 qqnorm(resid(mixed.lmer2))
