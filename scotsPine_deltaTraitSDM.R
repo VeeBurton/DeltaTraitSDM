@@ -97,6 +97,9 @@ sp3$X<-NULL
 sp3<-na.omit(sp3)
 
 # make nested variables
+# site/block/population/family/seedling (or tag?)
+
+
 
 # plot data by trial/provenance etc.
 ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
@@ -225,19 +228,19 @@ train.data  <- sp_T[training.samples, ]
 test.data <- sp_T[-training.samples, ]
 
 # build a regression model with all variables
-model2 <- lm(W17Height ~., data = train.data)
+modelT <- lm(W17Height ~., data = train.data)
 # make predictions
-predictions <- model2 %>% predict(test.data)
+predictions <- modelT %>% predict(test.data)
 # model performance
 data.frame(
   RMSE = RMSE(predictions, test.data$W17Height),
   R2 = R2(predictions, test.data$W17Height)
 )
-model2_summary<-tidy(model2)
+modelT_summary<-tidy(modelT)
 
 # detect multicollinearity
-car::vif(model2) 
-summary(model2)$coeff
+car::vif(modelT) 
+summary(modelT)$coeff
 
 
 ld.vars <- attributes(alias(model2)$Complete)$dimnames[[1]]
