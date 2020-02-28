@@ -226,13 +226,13 @@ modelT_summary<-tidy(modelT)
 car::vif(modelT) 
 summary(modelT)$coeff
 
-
-ld.vars <- attributes(alias(model2)$Complete)$dimnames[[1]]
+ld.vars <- attributes(alias(modelT)$Complete)$dimnames[[1]]
 ld.vars
-sp3<-sp3[,-which(names(sp3) %in% ldvars)]
+spT<-sp_T[,-which(names(sp_T) %in% ldvars)]
+head(spT) # only one variable left!
 
 # detect multicollinearity
-VIF <- car::vif(model2) %>%
+VIF <- car::vif(modelT) %>%
   as.list() %>% 
   as.data.frame() %>% 
   gather(key = 'variable', value = 'VIF') %>% 
@@ -249,8 +249,8 @@ best.vars
 # may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
 
 # e.g.
-SPmod1 <- lmer(W17Height ~ FFP_T
-               + (1|PlantingSite/Block/Population), data = sp3)
+SPmod1 <- lmer(W17Height ~ DD_18_T
+               + (1|sample), data = spT)
 
 summary(SPmod1)
 coef(SPmod1)
@@ -261,4 +261,7 @@ plot(SPmod1, which = 1)
 # q plot
 qqnorm(resid(SPmod1))
 qqline(resid(SPmod1))
+
+# not a good model! need more vars and to work out why i'm getting so many aliased coefficients
+# job for next week!
 
