@@ -24,7 +24,7 @@ head(sp)
 summary(sp)
 str(sp)
 colnames(sp)[1]<-"id"
-summary(sp$W17Height)
+summary(sp$W17Height) 
 sp$W17Height[which(sp$W17Height=="*")]<-NA
 sp$W17Height<-as.numeric(sp$W17Height)
 sp$Seedling[which(sp$Seedling=="*")]<-NA
@@ -34,31 +34,44 @@ sp$Block<-as.character(sp$Block)
 sp$Block[which(sp$Block=="c")]<-"C"
 sp$Block<-as.factor(sp$Block)
 
-# there are 3 sites – called Borders, Glensaugh, Inverewe here – and each is a fully randomised block design: 
+# height in mm
+# there are 3 sites – called Borders (Yair), Glensaugh, Inverewe here – and each is a fully randomised block design: 
 # there are 4 blocks at Borders, Glensaugh and 3 at Inverewe
 # in each site there are 21 PlantingSites, 8 families and either 3 or 4 individuals per family (1 per block)
 # so there are 21*8*4=672 at Borders, Glensaugh; 21*8*3= 504 at Inverewe; total = 1848
 # each tree has a unique identity (Tag), and details of each Seed Zone, PlantingSite, Family and Individual number are given per tree.
 # ‘PlantingSite’ tallies with the sites of origin in the coordinate file I sent you previously.
 
-locations <- read.csv("./Scots_pine/scots_pine_source_locations.csv")
-head(locations)
-colnames(locations)[1]<-"Name"
-codes<-as.data.frame(unique(sp$Population))
-colnames(codes)[1]<-'code'
-codes<-codes[order(codes$code),]
-locations$Population<-codes
-locations<-data.frame(locations$Name, locations$Population, locations$X, locations$Y)
-colnames(locations)<-c('ID1', 'ID2', 'Lat', 'Long')
+#locations <- read.csv("./Scots_pine/scots_pine_source_locations.csv")
+#head(locations)
+#colnames(locations)[1]<-"Name"
+#codes<-as.data.frame(unique(sp$Population))
+#colnames(codes)[1]<-'code'
+#codes<-codes[order(codes$code),]
+#locations$Population<-codes
+#locations<-data.frame(locations$Name, locations$Population, locations$X, locations$Y)
+#colnames(locations)<-c('ID1', 'ID2', 'Lat', 'Long')
 # need elev for Climate EU
-write.csv(locations, "./Scots_pine/scots_pine_source_locations2.csv")
+#write.csv(locations, "./Scots_pine/scots_pine_source_locations2.csv")
+# extracted elev from 50m DEM in Arc, for trial sites and provenances/sources - running through Climate EU
+all.locations <- read.csv("./Scots_pine/scots_pine_all_locations_elev.csv")
+ggplot(aes(Long,Lat, color=ID1), data=all.locations)+geom_point()
+
+normal<-read.csv("./Scots_pine/scots_pine_all_locations_elev_Normal_1961_1990Y.csv")
+s2050<-read.csv("./Scots_pine/scots_pine_all_locations_elev_HadGEM2-ES_rcp85_2050sY.csv")
+s2080<-read.csv("./Scots_pine/scots_pine_all_locations_elev_HadGEM2-ES_rcp85_2080sY.csv")
 
 # plot data by trial/provenance etc.
-ggplot(aes(W17Height), data = sp) + geom_histogram() +
+ggplot(aes(W17Height), data = sp) + geom_histogram(binwidth = 40) +
   facet_wrap(~ PlantingSite) +
   xlab("Height") + ylab("Frequency")
 
+ggplot(aes(W17Height), data = sp) + geom_histogram(binwidth = 40) +
+  facet_wrap(~ Population) +
+  xlab("Height") + ylab("Frequency")
+
 boxplot(W17Height ~ PlantingSite, data = sp)
+boxplot(W17Height ~ Population, data = sp)
 
 # Choosing variables
 # Stepwise modelling
