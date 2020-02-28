@@ -8,8 +8,11 @@ library(rgdal)
 library(rworldmap)
 library(sjPlot) 
 library(curry)
-library(tidyverse)
 library(broom)
+library(tidyverse)
+library(corrplot)
+library(caret)
+library(ggplot2)
 ###################
 
 #################################################################################################
@@ -83,19 +86,29 @@ colnames(sp3)[36:55]<-c("MAT_T","MWMT_T","MCMT_T","TD_T","MAP_T","MSP_T","AHM_T"
                         "EMNT_T","Eref_T", "CMD_T")
 
 summary(sp3)
-write.csv(sp3, "./Scots_pine/Scots_pine_H.csv")
+colnames(sp3)[2]<-"Population"
+colnames(sp3)[13:15]<-c("Latitude","Longitude","Elevation")
+head(sp3)
+#write.csv(sp3, "./Scots_pine/Scots_pine_H.csv")
+sp3<-read.csv("./Scots_pine/Scots_pine_H.csv")
+sp3$X<-NULL
+
+# remove NAs
+sp3<-na.omit(sp3)
+
+# make nested variables
 
 # plot data by trial/provenance etc.
-ggplot(aes(W17Height), data = sp) + geom_histogram(binwidth = 40) +
+ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
   facet_wrap(~ PlantingSite) +
   xlab("Height") + ylab("Frequency")
 
-ggplot(aes(W17Height), data = sp) + geom_histogram(binwidth = 40) +
+ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
   facet_wrap(~ Population) +
   xlab("Height") + ylab("Frequency")
 
-boxplot(W17Height ~ PlantingSite, data = sp)
-boxplot(W17Height ~ Population, data = sp)
+boxplot(W17Height ~ PlantingSite, data = sp3)
+boxplot(W17Height ~ Population, data = sp3)
 
 # Choosing variables
 # Stepwise modelling
@@ -105,6 +118,142 @@ boxplot(W17Height ~ Population, data = sp)
 # look at distribution of height (response variable)
 hist(sp3$W17Height) 
 
+# standardise all explanatory variables (everything except Height and random effects)
+library(robustHD)
+head(sp3)
+head(sp3[,c(13:55)])
+sp3[,c(13:55)]<-robustHD::standardize(sp3[,c(13:55)], centerFun = mean)
+head(sp3)
+sp3$DD18_T<-NULL
+summary(sp3)
+sp3<-na.omit(sp3)
+
+# detect multicollinearity using VIF 
+# split the data into training and test set
+training.samples <- sp3$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- sp3[training.samples, ]
+test.data <- sp3[-training.samples, ]
+
+# build a regression model with all variables
+model1 <- lm(W17Height ~., data = train.data)
+# make predictions
+predictions <- model1 %>% predict(test.data)
+# model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$W17Height),
+  R2 = R2(predictions, test.data$W17Height)
+)
+model1_summary<-tidy(model1)
+
+# detect multicollinearity
+car::vif(model1) # there are aliased coefficients in the model
+summary(model1)$coeff
+length(unique(summary(model1)$coeff))
+alias(model1)$Complete
+# the linearly dependent variables
+ld.vars <- attributes(alias(model1)$Complete)$dimnames[[1]]
+ld.vars
+ldvars<-ld.vars[48:88]
+sp3<-sp3[,-which(names(sp3) %in% ldvars)] # this is all explanatory variables :(
+
+# variance and covariance
+#####################################################
+
+str(sp3)
+sp3$id<-as.numeric(sp3$id)
+sp3$Tag<-as.numeric(sp3$Tag)
+sp3$Row<-as.numeric(sp3$Row)
+sp3$Column<-as.numeric(sp3$Column)
+str(sp3)
+
+sp3.s<-sp3[,-c(1,2,5,8,9,12)] # non-numeric
+var(sp3.s)
+cor(sp3.s)
+corrplot(cor(sp3.s), method = "ellipse")
+
+training.samples <- sp3.s$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- sp3.s[training.samples, ]
+test.data <- sp3.s[-training.samples, ]
+
+# build a regression model with all variables
+model2 <- lm(W17Height ~., data = train.data)
+# make predictions
+predictions <- model2 %>% predict(test.data)
+# model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$W17Height),
+  R2 = R2(predictions, test.data$W17Height)
+)
+model2_summary<-tidy(model2)
+
+# detect multicollinearity
+car::vif(model2) 
+summary(model2)$coeff
+
+# detect multicollinearity
+VIF <- car::vif(model2) %>%
+  as.list() %>% 
+  as.data.frame() %>% 
+  gather(key = 'variable', value = 'VIF') %>% 
+  arrange(desc(VIF))
+
+# remove variables with high VIF (above 5-10)
+best.vars<-unique(VIF$variable[which(VIF$VIF<12)])
+best.vars
+
+# filter to just vars with low VIF
+sp3.mod<-sp3[,c('W17Height', best.vars)]
+str(sp3.mod)
+
+
+# just trial vars
+sp_T<-sp3[,c(1:11,36:54)]
+str(sp_T)
+sp_T$id<-as.numeric(sp_T$id)
+sp_T$Tag<-as.numeric(sp_T$Tag)
+sp_T$Row<-as.numeric(sp_T$Row)
+sp_T$Column<-as.numeric(sp_T$Column)
+sp_T$Seedling<-as.numeric(sp_T$Seedling)
+sp_T$W17Height<-as.numeric(sp_T$W17Height)
+
+sp_T<-sp_T[,-c(1,2,5,8,9)]
+
+corrplot(cor(sp_T), method = "ellipse")
+
+training.samples <- sp_T$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- sp_T[training.samples, ]
+test.data <- sp_T[-training.samples, ]
+
+# build a regression model with all variables
+model2 <- lm(W17Height ~., data = train.data)
+# make predictions
+predictions <- model2 %>% predict(test.data)
+# model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$W17Height),
+  R2 = R2(predictions, test.data$W17Height)
+)
+model2_summary<-tidy(model2)
+
+# detect multicollinearity
+car::vif(model2) 
+summary(model2)$coeff
+
+
+ld.vars <- attributes(alias(model2)$Complete)$dimnames[[1]]
+ld.vars
+sp3<-sp3[,-which(names(sp3) %in% ldvars)]
+
+# detect multicollinearity
+VIF <- car::vif(model2) %>%
+  as.list() %>% 
+  as.data.frame() %>% 
+  gather(key = 'variable', value = 'VIF') %>% 
+  arrange(desc(VIF))
+
+# remove variables with high VIF (above 5-10)
+best.vars<-unique(VIF$variable[which(VIF$VIF<12)])
+best.vars
 
 
 ####################################################################################################
