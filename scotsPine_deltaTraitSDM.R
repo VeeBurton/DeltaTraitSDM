@@ -61,6 +61,30 @@ normal<-read.csv("./Scots_pine/scots_pine_all_locations_elev_Normal_1961_1990Y.c
 s2050<-read.csv("./Scots_pine/scots_pine_all_locations_elev_HadGEM2-ES_rcp85_2050sY.csv")
 s2080<-read.csv("./Scots_pine/scots_pine_all_locations_elev_HadGEM2-ES_rcp85_2080sY.csv")
 
+# merge to trait data
+colnames(normal)[2]<-'Population'
+sp2<-merge(sp,normal[-c(22:24),], by='Population')
+head(sp2)
+head(sp2[,c(16:35)])
+colnames(sp2)[16:35]<-c("MAT_P","MWMT_P","MCMT_P","TD_P","MAP_P","MSP_P","AHM_P","SHM_P","DD0_P","DD5_P","DD_18_P", "DD18_P", "NFFD_P","bFFP_P","eFFP_P","FFP_P","PAS_P",
+                        "EMNT_P","Eref_P", "CMD_P")
+
+normal$ID1<-as.character(normal$ID1)
+normal$ID1[22]<-"BORDERS"
+normal$ID1[23]<-"INVEREWE"
+normal$ID1[24]<-"GLENSAUGH"
+colnames(normal)[1]<-"PlantingSite"
+
+sp3<-merge(sp2,normal[-c(1:21),], by='PlantingSite')
+head(sp3)
+sp3<-sp3[,-c(36:39)]
+head(sp3[,c(36:55)])
+colnames(sp3)[36:55]<-c("MAT_T","MWMT_T","MCMT_T","TD_T","MAP_T","MSP_T","AHM_T","SHM_T","DD0_T","DD5_T","DD_18_T", "DD18_T", "NFFD_T","bFFP_T","eFFP_T","FFP_T","PAS_T",
+                        "EMNT_T","Eref_T", "CMD_T")
+
+summary(sp3)
+write.csv(sp3, "./Scots_pine/Scots_pine_H.csv")
+
 # plot data by trial/provenance etc.
 ggplot(aes(W17Height), data = sp) + geom_histogram(binwidth = 40) +
   facet_wrap(~ PlantingSite) +
@@ -79,8 +103,11 @@ boxplot(W17Height ~ Population, data = sp)
 # Look at variable colinearity
 
 # look at distribution of height (response variable)
-hist(sp$W17Height) 
+hist(sp3$W17Height) 
 
+
+
+####################################################################################################
 # good practice to standardise all explanatory variables (x)
 # include Trial/Block/Tree_id and Provenance as random effects - (1|Trial/Block/Tree_id)
 # may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
