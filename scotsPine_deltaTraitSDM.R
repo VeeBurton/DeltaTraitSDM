@@ -96,10 +96,12 @@ sp3$X<-NULL
 # remove NAs
 sp3<-na.omit(sp3)
 
+# may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
 # make nested variables
 # site/block/population/family/seedling (or tag?)
-
-
+sp3 <- within(sp3, sample <- factor(PlantingSite:Block:Population))
+head(sp3)
+sp3<-sp3[,-c(1,2,5,6,7)]
 
 # plot data by trial/provenance etc.
 ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
@@ -124,8 +126,8 @@ hist(sp3$W17Height)
 # standardise all explanatory variables (everything except Height and random effects)
 library(robustHD)
 head(sp3)
-head(sp3[,c(13:55)])
-sp3[,c(13:55)]<-robustHD::standardize(sp3[,c(13:55)], centerFun = mean)
+head(sp3[,c(8:50)])
+sp3[,c(8:50)]<-robustHD::standardize(sp3[,c(8:50)], centerFun = mean)
 head(sp3)
 sp3$DD18_T<-NULL
 summary(sp3)
@@ -165,11 +167,11 @@ sp3<-sp3[,-which(names(sp3) %in% ldvars)] # this is all explanatory variables :(
 str(sp3)
 sp3$id<-as.numeric(sp3$id)
 sp3$Tag<-as.numeric(sp3$Tag)
-sp3$Row<-as.numeric(sp3$Row)
-sp3$Column<-as.numeric(sp3$Column)
+sp3$Seedling<-as.numeric(sp3$Seedling)
+sp3$W17Height<-as.numeric(sp3$W17Height)
 str(sp3)
 
-sp3.s<-sp3[,-c(1,2,5,8,9,12)] # non-numeric
+sp3.s<-sp3[,-c(3,4,7,50)] # remove factors
 var(sp3.s)
 cor(sp3.s)
 corrplot(cor(sp3.s), method = "ellipse")
@@ -191,37 +193,19 @@ model2_summary<-tidy(model2)
 
 # detect multicollinearity
 car::vif(model2) 
-summary(model2)$coeff
-
-# detect multicollinearity
-VIF <- car::vif(model2) %>%
-  as.list() %>% 
-  as.data.frame() %>% 
-  gather(key = 'variable', value = 'VIF') %>% 
-  arrange(desc(VIF))
-
-# remove variables with high VIF (above 5-10)
-best.vars<-unique(VIF$variable[which(VIF$VIF<12)])
-best.vars
-
-# filter to just vars with low VIF
-sp3.mod<-sp3[,c('W17Height', best.vars)]
-str(sp3.mod)
-
 
 # just trial vars
-sp_T<-sp3[,c(1:11,36:54)]
+head(sp3)
+sp_T<-sp3[,c(50,1:10,31:49)]
 str(sp_T)
-sp_T$id<-as.numeric(sp_T$id)
-sp_T$Tag<-as.numeric(sp_T$Tag)
-sp_T$Row<-as.numeric(sp_T$Row)
-sp_T$Column<-as.numeric(sp_T$Column)
-sp_T$Seedling<-as.numeric(sp_T$Seedling)
-sp_T$W17Height<-as.numeric(sp_T$W17Height)
+sp_T2<-sp_T[,-c(1,4,5,8)] # remove factors
 
-sp_T<-sp_T[,-c(1,2,5,8,9)]
+corrplot(cor(sp_T2), method = "ellipse")
+cor_spT<-as.data.frame(cor(sp_T2))
+cor_spT[which (cor_spT < 0.4),]
 
-corrplot(cor(sp_T), method = "ellipse")
+sp_T$Latitude<-NULL
+sp_T$Longitude<-NULL
 
 training.samples <- sp_T$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
 train.data  <- sp_T[training.samples, ]
@@ -265,13 +249,12 @@ best.vars
 # may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
 
 # e.g.
-SPmod1 <- lmer(height ~ growing.season 
-               + FFP 
-               + (1|Trial/Block/Tree_id))
+SPmod1 <- lmer(W17Height ~ FFP_T
+               + (1|PlantingSite/Block/Population), data = sp3)
 
 summary(SPmod1)
-coef(Spmod1)
-augment(Spmod1)
+coef(SPmod1)
+augment(SPmod1)
 
 # plot residuals
 plot(SPmod1, which = 1)
