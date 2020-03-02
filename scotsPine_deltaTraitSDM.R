@@ -104,6 +104,38 @@ ggplot(sp3, aes(FFP_P,W17Height, colour=Provenance))+
   geom_point()+
   facet_wrap(~Trial)
 
+par(mfrow=c(4,2),mar=c(3,3,3,1))
+dotchart(sp3$W17Height, main="Height", group=sp3$Trial)
+dotchart(sp3$Elevation, main="Elevation", group=sp3$Trial)
+dotchart(sp3$MAT_P, main="MAT_P", group=sp3$Trial)
+dotchart(sp3$MAT_T, main="MAT_T", group=sp3$Trial)
+dotchart(sp3$DD5_P, main="DD5_P", group=sp3$Trial)
+dotchart(sp3$DD5_T, main="DD5_T", group=sp3$Trial)
+dotchart(sp3$FFP_P, main="FFP_P", group=sp3$Trial)
+dotchart(sp3$FFP_T, main="FFP_T", group=sp3$Trial)
+dev.off()
+
+summary(sp3)
+
+# transform variables with large values as they will dominate any correlation coefficient
+sp3$W17Height<-log(sp3$W17Height)
+
+head(sp3[,c(15:55)])
+sp3[,c(15:55)]<-log(sp3[,c(15:55)])
+
+head(sp3)
+sp3$DD18_P<-NULL
+sp3$EMNT_P<-NULL
+sp3$DD18_T<-NULL
+sp3$EMNT_T<-NULL
+
+pairs(sp3[,c(11,15:32)], na.action(na.omit)) # height, provenance climate
+pairs(sp3[,c(11,33:51)], na.action(na.omit)) # height, trial climate
+corrplot(cor(sp3[,c(11,15:32)]), method = "ellipse")
+corrplot(cor(sp3[,c(11,15:51)]), method = "ellipse")
+
+corvif(sp3[,c(11,15:51)])
+
 # may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
 # make nested variables
 # site/block/population/family/seedling (or tag?)
