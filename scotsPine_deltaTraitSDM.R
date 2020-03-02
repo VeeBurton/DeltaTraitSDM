@@ -41,6 +41,7 @@ sp$Block<-as.factor(sp$Block)
 # there are 3 sites – called Borders (Yair), Glensaugh, Inverewe here – and each is a fully randomised block design: 
 # there are 4 blocks at Borders, Glensaugh and 3 at Inverewe
 # in each site there are 21 PlantingSites, 8 families and either 3 or 4 individuals per family (1 per block)
+# family is a code for the provenance (mother trees known) and tree number. fathers not known
 # so there are 21*8*4=672 at Borders, Glensaugh; 21*8*3= 504 at Inverewe; total = 1848
 # each tree has a unique identity (Tag), and details of each Seed Zone, PlantingSite, Family and Individual number are given per tree.
 # ‘PlantingSite’ tallies with the sites of origin in the coordinate file I sent you previously.
@@ -65,8 +66,9 @@ s2050<-read.csv("./Scots_pine/scots_pine_all_locations_elev_HadGEM2-ES_rcp85_205
 s2080<-read.csv("./Scots_pine/scots_pine_all_locations_elev_HadGEM2-ES_rcp85_2080sY.csv")
 
 # merge to trait data
-colnames(normal)[2]<-'Population'
-sp2<-merge(sp,normal[-c(22:24),], by='Population')
+colnames(normal)[2]<-'Provenance'
+colnames(sp)[8]<-'Provenance'
+sp2<-merge(sp,normal[-c(22:24),], by='Provenance')
 head(sp2)
 head(sp2[,c(16:35)])
 colnames(sp2)[16:35]<-c("MAT_P","MWMT_P","MCMT_P","TD_P","MAP_P","MSP_P","AHM_P","SHM_P","DD0_P","DD5_P","DD_18_P", "DD18_P", "NFFD_P","bFFP_P","eFFP_P","FFP_P","PAS_P",
@@ -76,9 +78,10 @@ normal$ID1<-as.character(normal$ID1)
 normal$ID1[22]<-"BORDERS"
 normal$ID1[23]<-"INVEREWE"
 normal$ID1[24]<-"GLENSAUGH"
-colnames(normal)[1]<-"PlantingSite"
+colnames(normal)[1]<-"Trial"
 
-sp3<-merge(sp2,normal[-c(1:21),], by='PlantingSite')
+colnames(sp2)[4]<-"Trial"
+sp3<-merge(sp2,normal[-c(1:21),], by='Trial')
 head(sp3)
 sp3<-sp3[,-c(36:39)]
 head(sp3[,c(36:55)])
@@ -86,7 +89,7 @@ colnames(sp3)[36:55]<-c("MAT_T","MWMT_T","MCMT_T","TD_T","MAP_T","MSP_T","AHM_T"
                         "EMNT_T","Eref_T", "CMD_T")
 
 summary(sp3)
-colnames(sp3)[2]<-"Population"
+colnames(sp3)[2]<-"Provenance"
 colnames(sp3)[13:15]<-c("Latitude","Longitude","Elevation")
 head(sp3)
 #write.csv(sp3, "./Scots_pine/Scots_pine_H.csv")
@@ -96,24 +99,43 @@ sp3$X<-NULL
 # remove NAs
 sp3<-na.omit(sp3)
 
+# general exploratory plots
+ggplot(sp3, aes(FFP_P,W17Height, colour=Provenance))+
+  geom_point()+
+  facet_wrap(~Trial)
+
 # may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
 # make nested variables
 # site/block/population/family/seedling (or tag?)
-sp3 <- within(sp3, sample <- factor(PlantingSite:Block:Population))
 head(sp3)
-sp3<-sp3[,-c(1,2,5,6,7)]
+sp3 <- within(sp3, sample <- factor(Trial:Provenance:Family:Block))
+sample <- unique(sp3$sample)
+summary(sample)
+length(unique(sp3$sample))
+
+sp_summary<-sp3 %>% 
+  group_by(Trial) %>% 
+  summarise(Blocks = length(unique(Block)),
+            Provenances = length(unique(Provenance)),
+            Families = length(unique(Family)),
+            Seedlings = length(unique(Seedling)),
+            Individuals = length(unique(Tag)),
+            Observations = sum(n()))
+
+head(sp3)
+sp3<-sp3[,-c(1:10)]
 
 # plot data by trial/provenance etc.
 ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
-  facet_wrap(~ PlantingSite) +
+  facet_wrap(~ Trial) +
   xlab("Height") + ylab("Frequency")
 
 ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
-  facet_wrap(~ Population) +
+  facet_wrap(~ Provenance) +
   xlab("Height") + ylab("Frequency")
 
-boxplot(W17Height ~ PlantingSite, data = sp3)
-boxplot(W17Height ~ Population, data = sp3)
+boxplot(W17Height ~ Trial, data = sp3)
+boxplot(W17Height ~ Provenance, data = sp3)
 
 # Choosing variables
 # Stepwise modelling
@@ -126,12 +148,14 @@ hist(sp3$W17Height)
 # standardise all explanatory variables (everything except Height and random effects)
 library(robustHD)
 head(sp3)
-head(sp3[,c(8:50)])
-sp3[,c(8:50)]<-robustHD::standardize(sp3[,c(8:50)], centerFun = mean)
+head(sp3[,c(6:45)])
+sp3[,c(6:45)]<-robustHD::standardize(sp3[,c(6:45)], centerFun = mean)
 head(sp3)
 sp3$DD18_T<-NULL
 summary(sp3)
 sp3<-na.omit(sp3)
+
+#sp3$sample<-as.character(sp3$sample)
 
 # detect multicollinearity using VIF 
 # split the data into training and test set
