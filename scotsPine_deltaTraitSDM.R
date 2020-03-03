@@ -99,6 +99,15 @@ sp3$X<-NULL
 # remove NAs
 sp3<-na.omit(sp3)
 
+sp_summary<-sp3 %>% 
+  group_by(Trial) %>% 
+  summarise(Blocks = length(unique(Block)),
+            Provenances = length(unique(Provenance)),
+            Families = length(unique(Family)),
+            Seedlings = length(unique(Seedling)),
+            Individuals = length(unique(Tag)),
+            Observations = sum(n()))
+
 # general exploratory plots
 ggplot(sp3, aes(FFP_P,W17Height, colour=Provenance))+
   geom_point()+
@@ -248,7 +257,7 @@ VIF <- car::vif(model2) %>%
   arrange(desc(VIF))
 
 # remove variables with high VIF (above 5-10)
-best.vars<-unique(VIF$variable[which(VIF$VIF<100)])
+best.vars<-unique(VIF$variable[which(VIF$VIF<10)])
 best.vars
 
 ####################################################################################################
@@ -259,42 +268,80 @@ best.vars
 # may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
 # make nested variables
 # site/block/population/family/seedling (or tag?)
-head(sp3)
-sp3 <- within(sp3, sample <- factor(Trial:Provenance:Family:Block))
-sample <- unique(sp3$sample)
-summary(sample)
-length(unique(sp3$sample))
 
-sp_summary<-sp3 %>% 
-  group_by(Trial) %>% 
-  summarise(Blocks = length(unique(Block)),
-            Provenances = length(unique(Provenance)),
-            Families = length(unique(Family)),
-            Seedlings = length(unique(Seedling)),
-            Individuals = length(unique(Tag)),
-            Observations = sum(n()))
 
-head(sp3[,-c(1:10)])
-sp3<-sp3[,-c(1:10)]
-
-# plot data by trial/provenance etc.
-ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
-  facet_wrap(~ Trial) +
-  xlab("Height") + ylab("Frequency")
-
-ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
-  facet_wrap(~ Provenance) +
-  xlab("Height") + ylab("Frequency")
-
-boxplot(W17Height ~ Trial, data = sp3)
-boxplot(W17Height ~ Provenance, data = sp3)
-
-pinus <- sp4
+# pinus <- read.csv("./Scots_pine/Scots_pine_H_standardised_allvars.csv")
+# just variables identified by PCA (along same dimension as height)
+PCA_vars<-c("W17Height","MAT_T","MAP_T","FFP_T","DD5_T","MSP_T","eFFP_T","NFFD_T","MCMT_T","EMNT_T","MWMT_T","AHM_T","SHM_T",
+            "TD_T","DD0_T","CMD_T","DD_18_T","Eref_T","bFFP_T")
+pinus<-pinus[,which(names(pinus) %in% PCA_vars)] 
 pinus$Trial<- sp3$Trial
 pinus$Block <- sp3$Block
+pinus$Family <- sp3$Family
+pinus$Provenance <- sp3$Provenance
+pinus <- within(pinus, sample <- factor(Provenance:Family:Block))
+head(pinus)
+pinus<-pinus[,-c(21:23)]
+
+boxplot(W17Height ~ Trial, data = pinus)
+boxplot(W17Height ~ sample, data = pinus)
+
+corrplot(cor(pinus[,-c(20:21)]), method = "ellipse")
+
+training.samples <- pinus$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- pinus[training.samples, ]
+test.data <- pinus[-training.samples, ]
+
+# build a regression model with all variables
+model3 <- lm(W17Height ~., data = train.data)
+# make predictions
+predictions <- model3 %>% predict(test.data)
+# model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$W17Height),
+  R2 = R2(predictions, test.data$W17Height)
+)
+model3_summary<-tidy(model3)
+
+ld.vars <- attributes(alias(model3)$Complete)$dimnames[[1]]
+ld.vars
+pinus2<-pinus[,-which(names(pinus) %in% ld.vars)] 
+
+training.samples <- pinus2$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- pinus2[training.samples, ]
+test.data <- pinus2[-training.samples, ]
+
+# build a regression model with all variables
+model4 <- lm(W17Height ~., data = train.data)
+# make predictions
+predictions <- model4 %>% predict(test.data)
+# model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$W17Height),
+  R2 = R2(predictions, test.data$W17Height)
+)
+model4_summary<-tidy(model4)
+
+# detect multicollinearity
+car::vif(model4) 
+
+# detect multicollinearity
+VIF <- car::vif(model4) %>%
+  as.list() %>% 
+  as.data.frame() %>% 
+  gather(key = 'variable', value = 'VIF') %>% 
+  arrange(desc(VIF))
+
+# remove variables with high VIF (above 5-10)
+best.vars<-unique(VIF$variable[which(VIF$VIF<100)])
+best.vars
 
 # e.g.
-SPmod1 <- lmer(W17Height ~ DD_18_T + MAT_T + (1|Trial/Block), data = pinus)
+# all vars
+SPmod1 <- lmer(W17Height ~ MAT_T + MAP_T + FFP_T + DD5_T + MSP_T + eFFP_T + NFFD_T + MCMT_T + EMNT_T + MWMT_T + AHM_T 
+               + (1|Trial) 
+               + (1|sample),
+               data = pinus)
 
 summary(SPmod1)
 coef(SPmod1)
@@ -305,7 +352,4 @@ plot(SPmod1, which = 1)
 # q plot
 qqnorm(resid(SPmod1))
 qqline(resid(SPmod1))
-
-# not a good model! need more vars and to work out why i'm getting so many aliased coefficients
-# job for next week!
 
