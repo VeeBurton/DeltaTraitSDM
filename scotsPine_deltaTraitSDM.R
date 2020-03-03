@@ -113,18 +113,6 @@ ggplot(sp3, aes(FFP_P,W17Height, colour=Provenance))+
   geom_point()+
   facet_wrap(~Trial)
 
-par(mfrow=c(4,2),mar=c(3,3,3,1))
-dotchart(sp3$W17Height, main="Height", group=sp3$Trial)
-dotchart(sp3$Elevation, main="Elevation", group=sp3$Trial)
-dotchart(sp3$MAT_P, main="MAT_P", group=sp3$Trial)
-dotchart(sp3$MAT_T, main="MAT_T", group=sp3$Trial)
-dotchart(sp3$DD5_P, main="DD5_P", group=sp3$Trial)
-dotchart(sp3$DD5_T, main="DD5_T", group=sp3$Trial)
-dotchart(sp3$FFP_P, main="FFP_P", group=sp3$Trial)
-dotchart(sp3$FFP_T, main="FFP_T", group=sp3$Trial)
-dev.off()
-
-summary(sp3)
 
 # before transforming
 sp3$DD18_T<-NULL
@@ -287,6 +275,7 @@ boxplot(W17Height ~ Trial, data = pinus)
 boxplot(W17Height ~ sample, data = pinus)
 
 corrplot(cor(pinus[,-c(20:21)]), method = "ellipse")
+pairs(pinus[,-c(20:21)])
 
 training.samples <- pinus$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
 train.data  <- pinus[training.samples, ]
@@ -353,3 +342,72 @@ plot(SPmod1, which = 1)
 qqnorm(resid(SPmod1))
 qqline(resid(SPmod1))
 
+###################################################
+# centre and scale
+sp3<-read.csv("./Scots_pine/Scots_pine_H.csv")
+sp3$X<-NULL
+
+# remove NAs
+sp3<-na.omit(sp3)
+head(sp3)
+sp3<-sp3[,-c(1:10,12)]
+variables<-unique(colnames(sp3))
+
+# using functions from diagnosing_collinearity.R 
+for (i in c(1:44)){
+  #i<-1
+  var1<-variables[i]
+  var2<-sp3[, c(var1)] 
+  var_cent<-c.(var2)
+  var_scale<-z.(var_cent)
+  sp3[,c(var1)]<-var_scale
+}
+
+summary(sp3)
+corrplot(cor(sp3), method = "ellipse") 
+#pairs(sp3, na.action(na.omit))
+collinearity <- as.data.frame(cor(sp3))
+
+cor <- collinearity %>% 
+  mutate(Var1 = factor(row.names(.), levels=row.names(.))) %>% 
+  gather(key = Var2, value = value, -Var1, na.rm = TRUE, factor_key = TRUE) 
+
+high.cor <- filter(cor, value <=-0.6 | value >=0.6)
+ok.cor <- filter(cor, value >-0.6 & value <=0.6)
+
+vars<-unique(ok.cor$Var2)
+vars<-as.character(vars)
+sp4 <- sp3[, (names(sp3) %in% vars)]
+
+training.samples <- sp4$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- sp4[training.samples, ]
+test.data <- sp4[-training.samples, ]
+
+# build a regression model with all variables
+model5 <- lm(W17Height ~., data = train.data)
+# make predictions
+predictions <- model5 %>% predict(test.data)
+# model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$W17Height),
+  R2 = R2(predictions, test.data$W17Height)
+)
+model5_summary<-tidy(model5)
+
+# detect multicollinearity
+car::vif(model5) # there are aliased coeffs 
+#ld.vars <- attributes(alias(model5)$Complete)$dimnames[[1]]
+#ld.vars
+#sp4<-sp4[,-which(names(sp4) %in% ld.vars)] 
+# repeat from line 382
+
+# detect multicollinearity
+VIF <- car::vif(model5) %>%
+  as.list() %>% 
+  as.data.frame() %>% 
+  gather(key = 'variable', value = 'VIF') %>% 
+  arrange(desc(VIF))
+
+# remove variables with high VIF (above 5-10)
+best.vars<-unique(VIF$variable[which(VIF$VIF<10)])
+best.vars
