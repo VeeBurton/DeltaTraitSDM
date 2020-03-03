@@ -46,9 +46,9 @@ attributes(Pinus.pca)
 loadings(Pinus.pca)
 
 library(factoextra)
-fviz_pca_ind(Pinus.pca)
-fviz_pca_var(Pinus.pca)
-fviz_pca_biplot(Pinus.pca)
+#fviz_pca_ind(Pinus.pca)
+fviz_pca_var(Pinus.pca, repel=TRUE)
+#fviz_pca_biplot(Pinus.pca, repel = TRUE)
 
 #####################################################
 # try post transformation
