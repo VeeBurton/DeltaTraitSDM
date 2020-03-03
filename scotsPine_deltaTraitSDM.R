@@ -166,39 +166,6 @@ vars<-as.character(vars)
 
 sp4 <- sp3[, (names(sp3) %in% vars)]
 
-# may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
-# make nested variables
-# site/block/population/family/seedling (or tag?)
-head(sp3)
-sp3 <- within(sp3, sample <- factor(Trial:Provenance:Family:Block))
-sample <- unique(sp3$sample)
-summary(sample)
-length(unique(sp3$sample))
-
-sp_summary<-sp3 %>% 
-  group_by(Trial) %>% 
-  summarise(Blocks = length(unique(Block)),
-            Provenances = length(unique(Provenance)),
-            Families = length(unique(Family)),
-            Seedlings = length(unique(Seedling)),
-            Individuals = length(unique(Tag)),
-            Observations = sum(n()))
-
-head(sp3)
-sp3<-sp3[,-c(1:10)]
-
-# plot data by trial/provenance etc.
-ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
-  facet_wrap(~ Trial) +
-  xlab("Height") + ylab("Frequency")
-
-ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
-  facet_wrap(~ Provenance) +
-  xlab("Height") + ylab("Frequency")
-
-boxplot(W17Height ~ Trial, data = sp3)
-boxplot(W17Height ~ Provenance, data = sp3)
-
 # Choosing variables
 # Stepwise modelling
 # Combination of variables (PCA etc)
@@ -291,9 +258,45 @@ best.vars
 # include Trial/Block/Tree_id and Provenance as random effects - (1|Trial/Block/Tree_id)
 # may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
 
+# may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
+# make nested variables
+# site/block/population/family/seedling (or tag?)
+head(sp3)
+sp3 <- within(sp3, sample <- factor(Trial:Provenance:Family:Block))
+sample <- unique(sp3$sample)
+summary(sample)
+length(unique(sp3$sample))
+
+sp_summary<-sp3 %>% 
+  group_by(Trial) %>% 
+  summarise(Blocks = length(unique(Block)),
+            Provenances = length(unique(Provenance)),
+            Families = length(unique(Family)),
+            Seedlings = length(unique(Seedling)),
+            Individuals = length(unique(Tag)),
+            Observations = sum(n()))
+
+head(sp3[,-c(1:10)])
+sp3<-sp3[,-c(1:10)]
+
+# plot data by trial/provenance etc.
+ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
+  facet_wrap(~ Trial) +
+  xlab("Height") + ylab("Frequency")
+
+ggplot(aes(W17Height), data = sp3) + geom_histogram(binwidth = 40) +
+  facet_wrap(~ Provenance) +
+  xlab("Height") + ylab("Frequency")
+
+boxplot(W17Height ~ Trial, data = sp3)
+boxplot(W17Height ~ Provenance, data = sp3)
+
+pinus <- sp4
+pinus$Trial<- sp3$Trial
+pinus$Block <- sp3$Block
+
 # e.g.
-SPmod1 <- lmer(W17Height ~ DD_18_T
-               + (1|sample), data = spT)
+SPmod1 <- lmer(W17Height ~ DD_18_T + MAT_T + (1|Trial/Block), data = pinus)
 
 summary(SPmod1)
 coef(SPmod1)
