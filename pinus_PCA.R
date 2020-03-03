@@ -192,3 +192,45 @@ loadings(Pinus.pca4)
 fviz_pca_var(Pinus.pca4, repel = TRUE)
 
 write.csv(Pinus, "./Scots_pine/Scots_pine_H_standardised_allvars.csv" )
+
+###############################
+# centred and scaled
+###############################
+Pinus<-read.csv("./Scots_pine/Scots_pine_H.csv")
+Pinus$X<-NULL
+
+# remove NAs
+Pinus<-na.omit(Pinus)
+head(Pinus)
+Pinus<-Pinus[,-c(1:10,12)]
+variables<-unique(colnames(Pinus))
+
+# using functions from diagnosing_collinearity.R 
+for (i in c(1:44)){
+  #i<-1
+  var1<-variables[i]
+  var2<-Pinus[, c(var1)] 
+  var_cent<-c.(var2)
+  var_scale<-z.(var_cent)
+  Pinus[,c(var1)]<-var_scale
+}
+
+summary(Pinus)
+Pinus$DD18_T<-NULL
+
+Pinus.pca5 <- prcomp(Pinus, cor=TRUE, scores=TRUE) 
+summary(Pinus.pca5)
+# choose components to use based on proportion of variance explained
+screeplot(Pinus.pca5, type = "lines")
+# or by cumulative variance
+# Variance explained
+pc.var <- Pinus.pca5$sdev^2
+# Proportion of variation
+pc.pvar <- pc.var / sum(pc.var)
+# Cumulative proportion
+plot(cumsum(pc.pvar), type = 'b')
+abline(h = 0.9)
+
+attributes(Pinus.pca5)
+loadings(Pinus.pca5)
+fviz_pca_var(Pinus.pca5, repel = TRUE)
