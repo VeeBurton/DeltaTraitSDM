@@ -117,24 +117,54 @@ dev.off()
 
 summary(sp3)
 
+# before transforming
+sp3$DD18_T<-NULL
+corrplot(cor(sp3[,c(11,15:54)]), method = "ellipse")
+
 # transform variables with large values as they will dominate any correlation coefficient
 sp3$W17Height<-log(sp3$W17Height)
+sp3$Elevation<-log(sp3$Elevation)
+sp3$MAP_P<-log(sp3$MAP_P)
+sp3$MSP_P<-log(sp3$MSP_P)
+sp3$DD0_P<-log(sp3$DD0_P)
+sp3$DD5_P<-log(sp3$DD5_P)
+sp3$DD_18_P<-log(sp3$DD_18_P)
+sp3$NFFD_P<-log(sp3$NFFD_P)
+sp3$bFFP_P<-log(sp3$bFFP_P)
+sp3$eFFP_P<-log(sp3$eFFP_P)
+sp3$FFP_P<-log(sp3$FFP_P)
+sp3$PAS_P<-log(sp3$PAS_P)
+sp3$Eref_P<-log(sp3$Eref_P)
+sp3$MAP_T<-log(sp3$MAP_T)
+sp3$MSP_T<-log(sp3$MSP_T)
+sp3$DD0_T<-log(sp3$DD0_T)
+sp3$DD5_T<-log(sp3$DD5_T)
+sp3$DD_18_T<-log(sp3$DD_18_T)
+sp3$NFFD_T<-log(sp3$NFFD_T)
+sp3$bFFP_T<-log(sp3$bFFP_T)
+sp3$eFFP_T<-log(sp3$eFFP_T)
+sp3$FFP_T<-log(sp3$FFP_T)
+sp3$PAS_T<-log(sp3$PAS_T)
+sp3$Eref_T<-log(sp3$Eref_T)
 
-head(sp3[,c(15:55)])
-sp3[,c(15:55)]<-log(sp3[,c(15:55)])
+head(sp3[,c(11,15:54)])
 
-head(sp3)
-sp3$DD18_P<-NULL
-sp3$EMNT_P<-NULL
-sp3$DD18_T<-NULL
-sp3$EMNT_T<-NULL
+# after transformation
+corrplot(cor(sp3[,c(11,15:54)]), method = "ellipse") # no diff
+pairs(sp3[,c(11,15:54)], na.action(na.omit))
+collinearity <- as.data.frame(cor(sp3[,c(11,15:54)]))
 
-pairs(sp3[,c(11,15:32)], na.action(na.omit)) # height, provenance climate
-pairs(sp3[,c(11,33:51)], na.action(na.omit)) # height, trial climate
-corrplot(cor(sp3[,c(11,15:32)]), method = "ellipse")
-corrplot(cor(sp3[,c(11,15:51)]), method = "ellipse")
+cor <- collinearity %>% 
+  mutate(Var1 = factor(row.names(.), levels=row.names(.))) %>% 
+  gather(key = Var2, value = value, -Var1, na.rm = TRUE, factor_key = TRUE) 
 
-corvif(sp3[,c(11,15:51)])
+high.cor <- filter(cor, value <=-0.6 | value >=0.6)
+ok.cor <- filter(cor, value >-0.6 & value <=0.6)
+
+vars<-unique(ok.cor$Var2)
+vars<-as.character(vars)
+
+sp4 <- sp3[, (names(sp3) %in% vars)]
 
 # may need to make nesting explicit by creating new variables e.g. Trial1-Blocka, Trial1-Blockb etc.
 # make nested variables
@@ -178,22 +208,22 @@ boxplot(W17Height ~ Provenance, data = sp3)
 hist(sp3$W17Height) 
 
 # standardise all explanatory variables (everything except Height and random effects)
-library(robustHD)
-head(sp3)
-head(sp3[,c(6:45)])
-sp3[,c(6:45)]<-robustHD::standardize(sp3[,c(6:45)], centerFun = mean)
-head(sp3)
-sp3$DD18_T<-NULL
-summary(sp3)
-sp3<-na.omit(sp3)
+#library(robustHD)
+#head(sp3)
+#head(sp3[,c(6:45)])
+#sp3[,c(6:45)]<-robustHD::standardize(sp3[,c(6:45)], centerFun = mean)
+#head(sp3)
+#sp3$DD18_T<-NULL
+#summary(sp3)
+#sp3<-na.omit(sp3)
 
 #sp3$sample<-as.character(sp3$sample)
 
 # detect multicollinearity using VIF 
 # split the data into training and test set
-training.samples <- sp3$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
-train.data  <- sp3[training.samples, ]
-test.data <- sp3[-training.samples, ]
+training.samples <- sp4$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- sp4[training.samples, ]
+test.data <- sp4[-training.samples, ]
 
 # build a regression model with all variables
 model1 <- lm(W17Height ~., data = train.data)
@@ -214,27 +244,20 @@ alias(model1)$Complete
 # the linearly dependent variables
 ld.vars <- attributes(alias(model1)$Complete)$dimnames[[1]]
 ld.vars
-ldvars<-ld.vars[48:88]
-sp3<-sp3[,-which(names(sp3) %in% ldvars)] # this is all explanatory variables :(
+sp4<-sp4[,-which(names(sp4) %in% ld.vars)] 
 
 # variance and covariance
 #####################################################
 
-str(sp3)
-sp3$id<-as.numeric(sp3$id)
-sp3$Tag<-as.numeric(sp3$Tag)
-sp3$Seedling<-as.numeric(sp3$Seedling)
-sp3$W17Height<-as.numeric(sp3$W17Height)
-str(sp3)
+str(sp4)
+#sp4.s<-sp4[,-c(3,4,7,50)] # remove factors
+var(sp4)
+cor(sp4)
+corrplot(cor(sp4), method = "ellipse")
 
-sp3.s<-sp3[,-c(3,4,7,50)] # remove factors
-var(sp3.s)
-cor(sp3.s)
-corrplot(cor(sp3.s), method = "ellipse")
-
-training.samples <- sp3.s$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
-train.data  <- sp3.s[training.samples, ]
-test.data <- sp3.s[-training.samples, ]
+training.samples <- sp4$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- sp4[training.samples, ]
+test.data <- sp4[-training.samples, ]
 
 # build a regression model with all variables
 model2 <- lm(W17Height ~., data = train.data)
@@ -250,53 +273,17 @@ model2_summary<-tidy(model2)
 # detect multicollinearity
 car::vif(model2) 
 
-# just trial vars
-head(sp3)
-sp_T<-sp3[,c(50,1:10,31:49)]
-str(sp_T)
-sp_T2<-sp_T[,-c(1,4,5,8)] # remove factors
-
-corrplot(cor(sp_T2), method = "ellipse")
-cor_spT<-as.data.frame(cor(sp_T2))
-cor_spT[which (cor_spT < 0.4),]
-
-sp_T$Latitude<-NULL
-sp_T$Longitude<-NULL
-
-training.samples <- sp_T$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
-train.data  <- sp_T[training.samples, ]
-test.data <- sp_T[-training.samples, ]
-
-# build a regression model with all variables
-modelT <- lm(W17Height ~., data = train.data)
-# make predictions
-predictions <- modelT %>% predict(test.data)
-# model performance
-data.frame(
-  RMSE = RMSE(predictions, test.data$W17Height),
-  R2 = R2(predictions, test.data$W17Height)
-)
-modelT_summary<-tidy(modelT)
-
 # detect multicollinearity
-car::vif(modelT) 
-summary(modelT)$coeff
-
-ld.vars <- attributes(alias(modelT)$Complete)$dimnames[[1]]
-ld.vars
-spT<-sp_T[,-which(names(sp_T) %in% ldvars)]
-head(spT) # only one variable left!
-
-# detect multicollinearity
-VIF <- car::vif(modelT) %>%
+VIF <- car::vif(model2) %>%
   as.list() %>% 
   as.data.frame() %>% 
   gather(key = 'variable', value = 'VIF') %>% 
   arrange(desc(VIF))
 
 # remove variables with high VIF (above 5-10)
-best.vars<-unique(VIF$variable[which(VIF$VIF<12)])
+best.vars<-unique(VIF$variable[which(VIF$VIF<100)])
 best.vars
+
 
 
 ####################################################################################################
