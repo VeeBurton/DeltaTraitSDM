@@ -251,8 +251,6 @@ VIF <- car::vif(model2) %>%
 best.vars<-unique(VIF$variable[which(VIF$VIF<100)])
 best.vars
 
-
-
 ####################################################################################################
 # good practice to standardise all explanatory variables (x)
 # include Trial/Block/Tree_id and Provenance as random effects - (1|Trial/Block/Tree_id)
