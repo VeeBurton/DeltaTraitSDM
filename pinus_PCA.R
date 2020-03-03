@@ -50,8 +50,10 @@ fviz_pca_ind(Pinus.pca)
 fviz_pca_var(Pinus.pca)
 fviz_pca_biplot(Pinus.pca)
 
+#####################################################
 # try post transformation
-# transform variables with large values as they will dominate any correlation coefficient
+# log only variables with large values as they will dominate any correlation coefficient
+#####################################################
 Pinus$W17Height<-log(Pinus$W17Height)
 Pinus$Elevation<-log(Pinus$Elevation)
 Pinus$MAP_P<-log(Pinus$MAP_P)
@@ -99,3 +101,94 @@ abline(h = 0.9)
 attributes(Pinus.pca2)
 loadings(Pinus.pca2)
 fviz_pca_var(Pinus.pca2)
+
+#####################################################
+# log all vars
+#####################################################
+Pinus<-read.csv("./Scots_pine/Scots_pine_H.csv")
+Pinus$X<-NULL
+# remove NAs
+Pinus<-na.omit(Pinus)
+str(Pinus)
+Pinus<-Pinus[,-c(1:10,12)]
+variables<-unique(colnames(Pinus))
+
+for (i in c(1:44)){
+  #i<-1
+  var<-variables[i]
+  var1<-Pinus[, c(var)] 
+  var1<-as.numeric(var1)
+  Pinus[,c(var)]<-log(var1)
+}
+
+summary(Pinus)
+
+Pinus$Longitude<-NULL
+Pinus$DD18_P<-NULL
+Pinus$EMNT_P<-NULL
+Pinus$DD18_T<-NULL
+Pinus$EMNT_T<-NULL
+summary(Pinus)
+Pinus$CMD_T[which(Pinus$CMD_T==-Inf)]<-0
+Pinus$CMD_P[which(Pinus$CMD_P==-Inf)]<-0
+summary(Pinus)
+Pinus<-na.omit(Pinus)
+
+Pinus.pca3 <- prcomp(Pinus, cor=TRUE, scores=TRUE) 
+summary(Pinus.pca3)
+# choose components to use based on proportion of variance explained
+screeplot(Pinus.pca3, type = "lines")
+# or by cumulative variance
+# Variance explained
+pc.var <- Pinus.pca3$sdev^2
+# Proportion of variation
+pc.pvar <- pc.var / sum(pc.var)
+# Cumulative proportion
+plot(cumsum(pc.pvar), type = 'b')
+abline(h = 0.9)
+
+attributes(Pinus.pca3)
+loadings(Pinus.pca3)
+fviz_pca_var(Pinus.pca3)
+
+#####################################################
+# standardise all
+#####################################################
+
+Pinus<-read.csv("./Scots_pine/Scots_pine_H.csv")
+Pinus$X<-NULL
+# remove NAs
+Pinus<-na.omit(Pinus)
+str(Pinus)
+Pinus<-Pinus[,-c(1:10,12)]
+variables<-unique(colnames(Pinus))
+
+for (i in c(1:44)){
+  #i<-1
+  var<-variables[i]
+  var1<-Pinus[, c(var)] 
+  var1<-as.numeric(var1)
+  Pinus[,c(var)]<-robustHD::standardize(var1, centerFun = mean)
+}
+
+summary(Pinus)
+Pinus$DD18_T<-NULL
+
+Pinus.pca4 <- prcomp(Pinus, cor=TRUE, scores=TRUE) 
+summary(Pinus.pca4)
+# choose components to use based on proportion of variance explained
+screeplot(Pinus.pca4, type = "lines")
+# or by cumulative variance
+# Variance explained
+pc.var <- Pinus.pca4$sdev^2
+# Proportion of variation
+pc.pvar <- pc.var / sum(pc.var)
+# Cumulative proportion
+plot(cumsum(pc.pvar), type = 'b')
+abline(h = 0.9)
+
+attributes(Pinus.pca4)
+loadings(Pinus.pca4)
+fviz_pca_var(Pinus.pca4, repel = TRUE)
+
+write.csv(Pinus, "./Scots_pine/Scots_pine_H_standardised_allvars.csv" )
