@@ -12,6 +12,7 @@ library(nlme)
 library(lme4)
 library(broom)
 library(ggplot2)
+library(factoextra)
 
 # read in data
 Pinus<-read.csv("./Scots_pine/Scots_pine_H.csv")
@@ -45,7 +46,6 @@ abline(h = 0.9)
 attributes(Pinus.pca)
 loadings(Pinus.pca)
 
-library(factoextra)
 #fviz_pca_ind(Pinus.pca)
 fviz_pca_var(Pinus.pca, repel=TRUE)
 #fviz_pca_biplot(Pinus.pca, repel = TRUE)
@@ -205,6 +205,10 @@ head(Pinus)
 Pinus<-Pinus[,-c(1:10,12)]
 variables<-unique(colnames(Pinus))
 
+c. <- function (x) scale(x, scale = FALSE)
+
+z. <- function (x) scale(x)
+
 # using functions from diagnosing_collinearity.R 
 for (i in c(1:44)){
   #i<-1
@@ -234,3 +238,5 @@ abline(h = 0.9)
 attributes(Pinus.pca5)
 loadings(Pinus.pca5)
 fviz_pca_var(Pinus.pca5, repel = TRUE)
+
+write.csv(Pinus, "./Scots_pine/Scots_pine_H_cent_scal_allvars.csv" )
