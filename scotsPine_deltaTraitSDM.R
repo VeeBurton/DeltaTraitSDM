@@ -400,6 +400,11 @@ data.frame(
 )
 model5_summary<-tidy(model5)
 
+# try performance package
+r2(model5)
+icc(model5)
+check_model(model5)
+
 # detect multicollinearity
 car::vif(model5) # there are aliased coeffs 
 #ld.vars <- attributes(alias(model5)$Complete)$dimnames[[1]]
@@ -417,3 +422,17 @@ VIF <- car::vif(model5) %>%
 # remove variables with high VIF (above 5-10)
 best.vars<-unique(VIF$variable[which(VIF$VIF<10)])
 best.vars
+
+### remove each var in turn and see which improves model
+vars<-unique(ok.cor$Var2)
+vars<-as.character(vars)
+model<-c()
+peformance<-c()
+
+for (i in length(vars)){
+  i<-1
+  var<-vars[i]
+  model[i] <- lm(W17Height ~. -var, data = train.data)
+  # model performance
+  performance[i] <- model_performance(model[i])
+}
