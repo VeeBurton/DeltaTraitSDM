@@ -156,11 +156,18 @@ cor <- collinearity %>%
   mutate(Var1 = factor(row.names(.), levels=row.names(.))) %>% 
   gather(key = Var2, value = value, -Var1, na.rm = TRUE, factor_key = TRUE) 
 
-high.cor <- filter(cor, value <=-0.6 | value >=0.6)
-ok.cor <- filter(cor, value >-0.6 & value <=0.6)
+cor$combo<-paste0(cor$Var1,"-",cor$Var2)
+cor<-cor[unique(cor$combo),]
+head(cor)
+cor<- cor[order(cor$value),]
 
-vars<-unique(ok.cor$Var2)
+high.cor <- filter(cor, value <=-0.6 | value >=0.6)
+ok.cor <- filter(cor, value >-0.2 & value <=0.2)
+ok.cor<- ok.cor[order(ok.cor$value),]
+
+vars<-unique(ok.cor$combo)
 vars<-as.character(vars)
+vars
 
 sp4 <- sp3[, (names(sp3) %in% vars)]
 
@@ -426,13 +433,24 @@ best.vars
 ### remove each var in turn and see which improves model
 vars<-unique(ok.cor$Var2)
 vars<-as.character(vars)
+vars<-vars[-1]
 model<-c()
 peformance<-c()
 
 for (i in length(vars)){
-  i<-1
-  var<-vars[i]
+  #i<-1
+  var<-noquote(vars[i])
   model[i] <- lm(W17Height ~. -var, data = train.data)
   # model performance
   performance[i] <- model_performance(model[i])
 }
+
+# manually
+model1 <- lm(W17Height ~., data = train.data)
+performance(model1)
+model2 <- lm(W17Height~. -MAT_P, data = train.data)
+performance(model2)
+model3 <- lm(W17Height~. -MWMT_P, data = train.data)
+performance(model3)
+model4 <- lm(W17Height~. -TD_P, data = train.data)
+performance(model4)
