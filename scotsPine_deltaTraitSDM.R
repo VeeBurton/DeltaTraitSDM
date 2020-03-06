@@ -364,7 +364,12 @@ for (i in c(1:44)){
   sp3[,c(var1)]<-var_scale
 }
 
+sp3 <- read.csv("~/Documents/FR/FR_R/DeltaTrait_bitbucket/Scots_pine/Scots_pine_H_cent_scal_allvars.csv")
 summary(sp3)
+sp3$X<-NULL
+sp3$Latitude<-NULL
+sp3$Longitude<-NULL
+sp3$Elevation<-NULL
 corrplot(cor(sp3), method = "ellipse") 
 #pairs(sp3, na.action(na.omit))
 collinearity <- as.data.frame(cor(sp3))
