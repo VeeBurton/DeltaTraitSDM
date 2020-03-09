@@ -504,3 +504,54 @@ best.vars
 # model performance
 #performance[i] <- model_performance(model[i])
 #}
+
+# 09/03/2020
+# post-chat with Marta and Richard
+
+sp<-read.csv("./Scots_pine/Scots_pine_H_cent_scal_allvars.csv")
+head(sp)
+sp$X<-NULL
+sp$Latitude<-NULL
+sp$Longitude<-NULL
+sp$Elevation<-NULL
+sp2<- read.csv("./Scots_pine/Scots_pine_H.csv")
+sp2<-na.omit(sp2)
+sp$Trial <- sp2$Trial
+sp$Provenance <- sp2$Provenance
+sp$Block <- sp2$Block
+sp$Family <- sp2$Family
+sp$Seedling <- sp2$Seedling
+sp$Tag <- sp2$Tag
+head(sp)
+rm(sp2)
+
+# start testing combinations of variables
+
+# MAP_T and FFP_P (based on annual precipitation and growing season length being most important components in Richard's thesis analysis)
+SPmod1 <- lmer(W17Height ~ MAP_T + FFP_P + (1|Provenance) + (1|Trial/Block), data = sp)
+r2(SPmod1)
+icc(SPmod1)
+check_model(SPmod1)
+
+# same but log(H)
+SPmod2 <- lmer(log(W17Height) ~ MAP_T + FFP_P + (1|Provenance) + (1|Trial/Block), data = sp)
+r2(SPmod2)
+icc(SPmod2)
+check_model(SPmod2)
+
+# switch trial and provenance variables
+SPmod3 <- lmer(log(W17Height) ~ MAP_P + FFP_T + (1|Provenance) + (1|Trial/Block), data = sp)
+r2(SPmod3)
+icc(SPmod3)
+check_model(SPmod3)
+
+# all variables from PC1 of Richard's thesis
+# growing degree-days, monthly mean temps for Feb and July, annual precipitation, extreme temperature range
+SPmod4 <- lmer(log(W17Height) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + (1|Provenance) + (1|Trial/Block), data = sp)
+r2(SPmod4)
+icc(SPmod4)
+check_model(SPmod4)
+
+model_performance(SPmod4)
+compare_performance(SPmod1,SPmod2,SPmod3,SPmod4, rank = TRUE)
+plot(compare_performance(SPmod1,SPmod2,SPmod3,SPmod4, rank = TRUE))
