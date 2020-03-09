@@ -548,10 +548,9 @@ check_model(SPmod3)
 # all variables from PC1 of Richard's thesis
 # growing degree-days, monthly mean temps for Feb and July, annual precipitation, extreme temperature range
 SPmod4 <- lmer(log(W17Height) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + (1|Provenance) + (1|Trial/Block), data = sp)
-r2(SPmod4)
-icc(SPmod4)
+model_performance(SPmod4)
 check_model(SPmod4)
 
-model_performance(SPmod4)
+# comparisons
 compare_performance(SPmod1,SPmod2,SPmod3,SPmod4, rank = TRUE)
 plot(compare_performance(SPmod1,SPmod2,SPmod3,SPmod4, rank = TRUE))
