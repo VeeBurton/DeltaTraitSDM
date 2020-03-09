@@ -466,21 +466,6 @@ VIF <- car::vif(model2) %>%
 best.vars<-unique(VIF$variable[which(VIF$VIF<10)])
 best.vars
 
-### loop to remove each var in turn and see which improves model
-#vars<-unique(ok.cor$Var2)
-#vars<-as.character(vars)
-#vars<-vars[-1]
-#model<-c()
-#peformance<-c()
-
-#for (i in length(vars)){
-  #i<-1
-  #var<-noquote(vars[i])
-  #model[i] <- lm(W17Height ~. -var, data = train.data)
-  # model performance
-  #performance[i] <- model_performance(model[i])
-#}
-
 model3 <- lmer(W17Height ~. + (1|Provenance) + (1|Trial/Block/Seedling), data = train.data)
 
 model4 <- lmer(W17Height ~ MWMT_T + (1|Provenance) + (1|Trial/Block/Seedling), data = train.data)
@@ -504,3 +489,18 @@ VIF3 <- car::vif(model4) %>%
 # remove variables with high VIF (above 5-10)
 best.vars<-unique(VIF3$variable[which(VIF3$VIF<10)])
 best.vars
+
+### loop to remove each var in turn and see which improves model
+#vars<-unique(ok.cor$Var2)
+#vars<-as.character(vars)
+#vars<-vars[-1]
+#model<-c()
+#peformance<-c()
+
+#for (i in length(vars)){
+#i<-1
+#var<-noquote(vars[i])
+#model[i] <- lm(W17Height ~. -var, data = train.data)
+# model performance
+#performance[i] <- model_performance(model[i])
+#}
