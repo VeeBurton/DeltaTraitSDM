@@ -371,15 +371,27 @@ for (i in c(1:44)){
   sp3[,c(var1)]<-var_scale
 }
 
-sp3 <- read.csv("~/Documents/FR/FR_R/DeltaTrait_bitbucket/Scots_pine/Scots_pine_H_cent_scal_allvars.csv")
+sp3<-read.csv("./Scots_pine/Scots_pine_H_cent_scal_allvars.csv")
+#sp3 <- read.csv("~/Documents/FR/FR_R/DeltaTrait_bitbucket/Scots_pine/Scots_pine_H_cent_scal_allvars.csv")
 summary(sp3)
 sp3$X<-NULL
 sp3$Latitude<-NULL
 sp3$Longitude<-NULL
 sp3$Elevation<-NULL
-corrplot(cor(sp3), method = "ellipse") 
+
+sp <- read.csv("./Scots_pine/Scots_pine_H.csv")
+sp <- na.omit(sp)
+sp3$Trial <- sp$Trial
+sp3$Provenance <- sp$Provenance
+sp3$Block <- sp$Block
+sp3$Family <- sp$Family
+sp3$Seedling <- sp$Seedling
+sp3$Tag <- sp$Tag
+head(sp3)
+
+corrplot(cor(sp3[,-c(40:46)]), method = "ellipse") 
 #pairs(sp3, na.action(na.omit))
-collinearity <- as.data.frame(cor(sp3))
+collinearity <- as.data.frame(cor(sp3[,-c(40:46)]))
 
 cor <- collinearity %>% 
   mutate(Var1 = factor(row.names(.), levels=row.names(.))) %>% 
@@ -388,39 +400,63 @@ cor <- collinearity %>%
 high.cor <- filter(cor, value <=-0.6 | value >=0.6)
 ok.cor <- filter(cor, value >-0.6 & value <=0.6)
 
-vars<-unique(ok.cor$Var2)
-vars<-as.character(vars)
-sp4 <- sp3[, (names(sp3) %in% vars)]
+#vars<-unique(ok.cor$Var2)
+#vars<-as.character(vars)
+#sp4 <- sp3[, (names(sp3) %in% vars)]
 
-training.samples <- sp4$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
-train.data  <- sp4[training.samples, ]
-test.data <- sp4[-training.samples, ]
+training.samples <- sp3$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- sp3[training.samples, ]
+test.data <- sp3[-training.samples, ]
 
 # build a regression model with all variables
-model5 <- lm(W17Height ~., data = train.data)
+model1 <- lm(W17Height ~., data = train.data)
 # make predictions
-predictions <- model5 %>% predict(test.data)
+predictions <- model1 %>% predict(test.data)
 # model performance
 data.frame(
   RMSE = RMSE(predictions, test.data$W17Height),
   R2 = R2(predictions, test.data$W17Height)
 )
-model5_summary<-tidy(model5)
+model1_summary<-tidy(model1)
 
 # try performance package
-r2(model5)
-icc(model5)
-check_model(model5)
+r2(model1)
+icc(model1)
+check_model(model1)
 
 # detect multicollinearity
-car::vif(model5) # there are aliased coeffs 
-#ld.vars <- attributes(alias(model5)$Complete)$dimnames[[1]]
-#ld.vars
-#sp4<-sp4[,-which(names(sp4) %in% ld.vars)] 
-# repeat from line 382
+car::vif(model1) # there are aliased coeffs 
+ld.vars <- attributes(alias(model1)$Complete)$dimnames[[1]]
+ld.vars
+#  [1] "TD_P"    "FFP_P"   "MCMT_T"  "TD_T"    "MAP_T"   "MSP_T"   "AHM_T"   "SHM_T"   "DD0_T"   "DD5_T"   "DD_18_T" "NFFD_T"  "bFFP_T"  "eFFP_T" 
+# [15] "FFP_T"   "PAS_T"   "EMNT_T"  "Eref_T"  "CMD_T"  
+sp3<-sp3[,-which(names(sp3) %in% ld.vars)] # remove these
+
+training.samples <- sp3$W17Height %>% createDataPartition(p = 0.8, list = FALSE)
+train.data  <- sp3[training.samples, ]
+test.data <- sp3[-training.samples, ]
+
+# build a regression model with all variables
+model2 <- lm(W17Height ~., data = train.data)
+# make predictions
+predictions <- model2 %>% predict(test.data)
+# model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$W17Height),
+  R2 = R2(predictions, test.data$W17Height)
+)
+model2_summary<-tidy(model2)
+
+# try performance package
+r2(model2)
+icc(model2)
+check_model(model2)
 
 # detect multicollinearity
-VIF <- car::vif(model5) %>%
+car::vif(model2)
+
+# detect multicollinearity
+VIF <- car::vif(model2) %>%
   as.list() %>% 
   as.data.frame() %>% 
   gather(key = 'variable', value = 'VIF') %>% 
@@ -430,27 +466,41 @@ VIF <- car::vif(model5) %>%
 best.vars<-unique(VIF$variable[which(VIF$VIF<10)])
 best.vars
 
-### remove each var in turn and see which improves model
-vars<-unique(ok.cor$Var2)
-vars<-as.character(vars)
-vars<-vars[-1]
-model<-c()
-peformance<-c()
+### loop to remove each var in turn and see which improves model
+#vars<-unique(ok.cor$Var2)
+#vars<-as.character(vars)
+#vars<-vars[-1]
+#model<-c()
+#peformance<-c()
 
-for (i in length(vars)){
+#for (i in length(vars)){
   #i<-1
-  var<-noquote(vars[i])
-  model[i] <- lm(W17Height ~. -var, data = train.data)
+  #var<-noquote(vars[i])
+  #model[i] <- lm(W17Height ~. -var, data = train.data)
   # model performance
-  performance[i] <- model_performance(model[i])
-}
+  #performance[i] <- model_performance(model[i])
+#}
 
-# manually
-model1 <- lm(W17Height ~., data = train.data)
-performance(model1)
-model2 <- lm(W17Height~. -MAT_P, data = train.data)
-performance(model2)
-model3 <- lm(W17Height~. -MWMT_P, data = train.data)
-performance(model3)
-model4 <- lm(W17Height~. -TD_P, data = train.data)
-performance(model4)
+model3 <- lmer(W17Height ~. + (1|Provenance) + (1|Trial/Block/Seedling), data = train.data)
+
+model4 <- lmer(W17Height ~ MWMT_T + (1|Provenance) + (1|Trial/Block/Seedling), data = train.data)
+# Random effect variances not available. Returned R2 does not account for random effects.
+# Can't compute random effect variances. Some variance components equal zero.
+# Solution: Respecify random structure! 
+r2(model4)
+icc(model4)
+check_model(model4)
+
+# detect multicollinearity
+car::vif(model4)
+
+# detect multicollinearity
+VIF3 <- car::vif(model4) %>%
+  as.list() %>% 
+  as.data.frame() %>% 
+  gather(key = 'variable', value = 'VIF') %>% 
+  arrange(desc(VIF))
+
+# remove variables with high VIF (above 5-10)
+best.vars<-unique(VIF3$variable[which(VIF3$VIF<10)])
+best.vars
