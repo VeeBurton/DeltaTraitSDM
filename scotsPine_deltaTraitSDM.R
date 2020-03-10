@@ -522,35 +522,118 @@ sp$Block <- sp2$Block
 sp$Family <- sp2$Family
 sp$Seedling <- sp2$Seedling
 sp$Tag <- sp2$Tag
+sp$row <- sp2$Row
+sp$column <- sp2$Column
+sp$H2 <- sp2$W17Height
 head(sp)
 rm(sp2)
+
+# make nesting explicit
+sp <- sp %>% mutate(block=factor(Trial:Block),
+                    popSite=factor(Trial:Provenance),
+                    famSite=factor(Trial:Family))
+head(sp)
+
+## overall summary - variation among populations...
+ggplot(sp, aes(reorder(Provenance, W17Height), W17Height, group = Provenance))+
+  geom_violin()+
+  facet_wrap(~Trial)
+
+## spatial effect in trial?
+ggplot(sp, aes(row, column, fill = W17Height))+
+  geom_tile(colour = "grey55")+theme_void()+
+  facet_wrap(~Trial)+scale_fill_viridis_c()
+
+
+# boxplots
+boxplot(sp$W17Height ~ sp$Trial)
+boxplot(sp$W17Height ~ sp$Provenance)
+
+colnames(sp)[1]<-"H"
+
+# relationships between the response variable and the explanatory variables
+# pairplots
+panel.hist <- function(x, ...){
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "grey", ...)
+}
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y))
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+graphics::pairs(sp[,c(1:10)], diag.panel=panel.hist, upper.panel=panel.cor)
+graphics::pairs(sp[,c(53,2:10)], diag.panel=panel.hist, upper.panel=panel.cor) # raw data response var
+
+sp$H2log<-log(sp$H2) # log raw height
+graphics::pairs(sp[,c(54,2:10)], diag.panel=panel.hist, upper.panel=panel.cor) # log raw height
+graphics::pairs(sp[,c(54,11:21)], diag.panel=panel.hist, upper.panel=panel.cor)
+graphics::pairs(sp[,c(54,22:31)], diag.panel=panel.hist, upper.panel=panel.cor)
+graphics::pairs(sp[,c(54,32:40)], diag.panel=panel.hist, upper.panel=panel.cor)
 
 # start testing combinations of variables
 
 # MAP_T and FFP_P (based on annual precipitation and growing season length being most important components in Richard's thesis analysis)
-SPmod1 <- lmer(W17Height ~ MAP_T + FFP_P + (1|Provenance) + (1|Trial/Block), data = sp)
+SPmod1 <- lmer(H ~ MAP_T + FFP_P + (1|Provenance) + (1|Trial/Block), data = sp)
+tidy(SPmod1)
 r2(SPmod1)
 icc(SPmod1)
 check_model(SPmod1)
 
 # same but log(H)
-SPmod2 <- lmer(log(W17Height) ~ MAP_T + FFP_P + (1|Provenance) + (1|Trial/Block), data = sp)
+SPmod2 <- lmer(log(H) ~ MAP_T + FFP_P + (1|Provenance) + (1|Trial/Block), data = sp)
 r2(SPmod2)
 icc(SPmod2)
 check_model(SPmod2)
+summary(SPmod2)
+#fixef(SPmod2) # fixed effects
+#ranef(SPmod2) # random effects
+#confint(SPmod2) # confidence intervals
+tidy(SPmod2, conf.int=TRUE) # repeats three previous calls in one call
 
 # switch trial and provenance variables
-SPmod3 <- lmer(log(W17Height) ~ MAP_P + FFP_T + (1|Provenance) + (1|Trial/Block), data = sp)
+SPmod3 <- lmer(log(H) ~ MAP_P + FFP_T + (1|Provenance) + (1|Trial/Block), data = sp)
 r2(SPmod3)
 icc(SPmod3)
 check_model(SPmod3)
 
 # all variables from PC1 of Richard's thesis
 # growing degree-days, monthly mean temps for Feb and July, annual precipitation, extreme temperature range
-SPmod4 <- lmer(log(W17Height) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + (1|Provenance) + (1|Trial/Block), data = sp)
+SPmod4 <- lmer(log(H) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + (1|Provenance) + (1|Trial/Block), data = sp)
 model_performance(SPmod4)
 check_model(SPmod4)
 
 # comparisons
 compare_performance(SPmod1,SPmod2,SPmod3,SPmod4, rank = TRUE)
 plot(compare_performance(SPmod1,SPmod2,SPmod3,SPmod4, rank = TRUE))
+
+# variables shown to be correlated with H from pairplots
+# o	MWMT_T (0.41)
+# o	PAS_T (0.41)
+# o	TD_T (0.33)
+# o	DD0_T (0.30)
+# o	MCMT_T (0.28)
+# o	eFFP_T (0.28)
+# o	Eref_T (0.24)
+# o	EMNT_T (0.22)
+# o	DD18_T (0.21)
+# o	NFFD_T (0.21) 
+
+# highest two correlated - mean warmest month temp and precipitation as snow
+SPmod5 <- lmer(log(H) ~ MWMT_T + PAS_T + (1|Provenance) + (1|Trial/Block), data=sp)
+r2(SPmod5)
+icc(SPmod5)
+check_model(SPmod5)
+summary(SPmod5)
+tidy(SPmod5, conf.int=TRUE)
+
+
