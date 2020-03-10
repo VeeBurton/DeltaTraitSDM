@@ -629,11 +629,27 @@ plot(compare_performance(SPmod1,SPmod2,SPmod3,SPmod4, rank = TRUE))
 # o	NFFD_T (0.21) 
 
 # highest two correlated - mean warmest month temp and precipitation as snow
-SPmod5 <- lmer(log(H) ~ MWMT_T + PAS_T + (1|Provenance) + (1|Trial/Block), data=sp)
+SPmod5 <- lmer(log(H) ~ MWMT_T + PAS_T + (1|popSite) + (1|block/Tag), data=sp)
 r2(SPmod5)
 icc(SPmod5)
 check_model(SPmod5)
 summary(SPmod5)
 tidy(SPmod5, conf.int=TRUE)
 
+# precipitation as snow, and number of frost-free days
+SPmod6 <- lmer(log(H) ~ PAS_T + NFFD_T + (1|popSite) + (1|block/Tag), data=sp)
+check_model(SPmod6)
+summary(SPmod6)
 
+SPmod7 <- lmer(log(H) ~ PAS_T + NFFD_T + (1|Trial/Block/Provenance), data=sp)
+
+# work out nesting properly
+sp <- sp %>% mutate(nest=factor(Trial:Block:Provenance))
+length(unique(sp$nest)) 
+
+SPmod7 <- lmer(log(H) ~ PAS_T + NFFD_T + (1|nest), data=sp)
+summary(SPmod7) 
+r2(SPmod7)
+
+compare_performance(SPmod5,SPmod6,SPmod7, rank = TRUE)
+plot(compare_performance(SPmod5,SPmod6,SPmod7, rank = TRUE))
