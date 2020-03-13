@@ -644,14 +644,33 @@ length(unique(sp$nest))
 
 # precipitation as snow, and number of frost-free days
 SPmod6 <- lmer(log(H) ~ PAS_T + NFFD_T + (1|popSite) + (1|block), data=sp)
-summary(SPmod6)
 #SPmod6a <- lmer(log(H) ~ PAS_T + NFFD_T + (1|Provenance) + (1|Trial/Block), data=sp)
 #SPmod6b <- lmer(log(H) ~ PAS_T + NFFD_T + (1|Provenance/Family) + (1|Trial/Block), data=sp)
 SPmod6c <- lmer(log(H) ~ PAS_T + NFFD_T + (1|nest), data=sp)
-summary(SPmod6c)
 
-SPmod7 <- lmer(log(H) ~ PAS_T + NFFD_T + (1|nest), data=sp)
-summary(SPmod7) 
+#SPmod7 <- lmer(log(H) ~ PAS_T + NFFD_T + (1|nest), data=sp)
 
-compare_performance(SPmod1,SPmod2,SPmod3,SPmod4,SPmod5,SPmod6,SPmod6c,SPmod7, rank = TRUE)
-plot(compare_performance(SPmod1,SPmod2,SPmod3,SPmod4,SPmod5,SPmod6,SPmod6c,SPmod7, rank = TRUE))
+SPmod8 <- lmer(log(H) ~ DD0_T + TD_T + (1|popSite) + (1|block), data=sp)
+SPmod9 <- lmer(log(H) ~ PAS_T + DD0_T + TD_T + (1|popSite) + (1|block), data=sp)
+
+compare_performance(SPmod6,SPmod6c,SPmod8, SPmod9, rank = TRUE)
+plot(compare_performance(SPmod6,SPmod6c,SPmod8, SPmod9, rank = TRUE))
+
+check_model(SPmod8)
+
+# dredge for all possible combinations
+require(MuMIn)
+options(na.action = "na.fail") # change the default "na.omit" to prevent models from being fitted to different datasets in case of missing values.
+
+globalmodel <- lmer(log(H) ~ MWMT_T + PAS_T + TD_T + DD0_T + MCMT_T + eFFP_T + Eref_T + EMNT_T + DD_18_T + NFFD_T +
+                    (1|popSite) + (1|block),
+                    data = sp)
+summary(globalmodel)
+
+combinations <- dredge(globalmodel)
+print(combinations)
+coefs <- coefTable(combinations)
+coefTable(combinations)[1]
+
+combinations<- combinations[order(combinations$AICc),]
+models <- get.models(combinations, subset=TRUE)
