@@ -544,12 +544,11 @@ ggplot(sp, aes(row, column, fill = W17Height))+
   geom_tile(colour = "grey55")+theme_void()+
   facet_wrap(~Trial)+scale_fill_viridis_c()
 
+colnames(sp)[1]<-"H"
 
 # boxplots
-boxplot(sp$W17Height ~ sp$Trial)
-boxplot(sp$W17Height ~ sp$Provenance)
-
-colnames(sp)[1]<-"H"
+boxplot(sp$H ~ sp$Trial)
+boxplot(sp$H ~ sp$Provenance)
 
 # relationships between the response variable and the explanatory variables
 # pairplots
@@ -662,7 +661,7 @@ check_model(SPmod8)
 require(MuMIn)
 options(na.action = "na.fail") # change the default "na.omit" to prevent models from being fitted to different datasets in case of missing values.
 
-globalmodel <- lmer(log(H) ~ MWMT_T + PAS_T + TD_T + DD0_T + MCMT_T + eFFP_T + Eref_T + EMNT_T + DD_18_T + NFFD_T +
+globalmodel <- lmer(log(H2) ~ MWMT_T + PAS_T + TD_T + DD0_T + MCMT_T + eFFP_T + Eref_T + EMNT_T + DD_18_T + NFFD_T +
                     (1|popSite) + (1|block),
                     data = sp)
 summary(globalmodel)
@@ -674,3 +673,45 @@ coefTable(combinations)[1]
 
 combinations<- combinations[order(combinations$AICc),]
 models <- get.models(combinations, subset=TRUE)
+
+# "best models"
+# growing degree days above 18, number of frost-free days
+mod1<-lmer(log(H2) ~ DD_18_T + NFFD_T + (1|popSite) + (1|block),data = training)
+# same and also precipitation as snow
+mod2<-lmer(log(H2) ~ DD_18_T + NFFD_T + PAS_T + (1|popSite) + (1|block),data = training)
+# same with temperature difference
+mod3<-lmer(log(H2) ~ DD_18_T + NFFD_T + TD_T + (1|popSite) + (1|block),data = training)
+# combination of all of the above
+mod4<-lmer(log(H2) ~ DD_18_T + NFFD_T + PAS_T + TD_T + (1|popSite) + (1|block),data = training)
+mod5<-lmer(log(H2) ~ DD_18_T + EMNT_T + (1|popSite) + (1|block),data = training)
+mod6<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + (1|popSite) + (1|block),data = training)
+mod7<-lmer(log(H2) ~ DD_18_T + EMNT_T + MCMT_T + (1|popSite) + (1|block),data = training)
+mod8<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + MCMT_T + (1|popSite) + (1|block),data = training)
+
+compare_performance(mod1,mod2,mod3,mod4,mod5,mod6,mod7,mod8, rank = TRUE)
+plot(compare_performance(mod1,mod2,mod3,mod4,mod5,mod6,mod7,mod8, rank = TRUE))
+
+# run on training and test datasets
+results<-NULL
+for(i in 1:1000) {
+  #i<-1
+  rows<-sample(x=1:nrow(sp),size=round(nrow(sp)*0.25,1))
+  training<-sp[-rows,]
+  testing<-sp[rows,]
+  mod1<-lmer(log(H2) ~ DD_18_T + NFFD_T + (1|popSite) + (1|block),data = training)
+  mod2<-lmer(log(H2) ~ DD_18_T + NFFD_T + PAS_T + (1|popSite) + (1|block),data = training)
+  mod3<-lmer(log(H2) ~ DD_18_T + NFFD_T + TD_T + (1|popSite) + (1|block),data = training)
+  mod4<-lmer(log(H2) ~ DD_18_T + NFFD_T + PAS_T + TD_T + (1|popSite) + (1|block),data = training)
+  mod5<-lmer(log(H2) ~ DD_18_T + EMNT_T + (1|popSite) + (1|block),data = training)
+  mod6<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + (1|popSite) + (1|block),data = training)
+  mod7<-lmer(log(H2) ~ DD_18_T + EMNT_T + MCMT_T + (1|popSite) + (1|block),data = training)
+  mod8<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + MCMT_T + (1|popSite) + (1|block),data = training)
+  prd1<-predict(mod1,testing)
+  errors<-prd1-testing$H
+  results<-rbind(results,data.frame(Run=i,MAE=mean(abs(errors)),RMSE=sqrt(sum(errors^2)/nrow(testing))))
+}
+summary(results)
+hist(results$MAE,breaks=50)
+hist(results$RMSE,breaks=50)
+boxplot(results$MAE)
+boxplot(results$RMSE)
