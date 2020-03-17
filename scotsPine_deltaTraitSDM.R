@@ -688,6 +688,9 @@ mod6<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + (1|popSite) + (1|block),data = 
 mod7<-lmer(log(H2) ~ DD_18_T + EMNT_T + MCMT_T + (1|popSite) + (1|block),data = training)
 mod8<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + MCMT_T + (1|popSite) + (1|block),data = training)
 
+# realised EMNT was a typo by me when processing climate EU data
+# it's just EMT - extreme minimum temperature
+
 compare_performance(mod1,mod2,mod3,mod4,mod5,mod6,mod7,mod8, rank = TRUE)
 plot(compare_performance(mod1,mod2,mod3,mod4,mod5,mod6,mod7,mod8, rank = TRUE))
 
