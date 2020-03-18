@@ -284,3 +284,19 @@ ggbiplot(Pinus.pca6, ellipse = TRUE, choices=c(1,2), groups = Pinus.prov, varnam
 ggbiplot(Pinus.pca6, ellipse = TRUE, choices=c(3,4), groups = Pinus.prov)
 # look at PCA5 and PCA6
 ggbiplot(Pinus.pca6, ellipse = TRUE, choices=c(5,6), groups = Pinus.trial)
+
+# look at correlations between PCAs and variables
+# if the original variables were standardised, then you should simply look at the first...
+# ... principal axis (rotation in R terminology) and select variables with the highest...
+# ... absolute values
+
+# a loadings matrix is computed between original variables and standardised PCs
+#loadings(Pinus.pca6)
+Pinus.loadings <- print(Pinus.pca6$rotation)
+Pinus.loadings <- as.data.frame(Pinus.loadings)
+Pinus.loadings<- Pinus.loadings[order(Pinus.loadings$PC1),]
+Pinus.loadings<- Pinus.loadings[order(Pinus.loadings$PC2),]
+Pinus.loadings<- Pinus.loadings[order(Pinus.loadings$PC3),]
+Pinus.loadings<- Pinus.loadings[order(Pinus.loadings$PC4),]
+Pinus.loadings <- Pinus.loadings[,c(1:6)]
+write.csv(Pinus.loadings, "./Scots_pine/PCA_loadings.csv")
