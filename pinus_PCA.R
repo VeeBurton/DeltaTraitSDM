@@ -257,7 +257,7 @@ summary(Pinus.pca6)
 # PC1 explained 39% of the variance. PC2 29% of the variance. PC3 12% of the variance. PC4 8%. PC5 5%.
 str(Pinus.pca6)
 library(ggbiplot)
-ggbiplot(Pinus.pca6, labels=rownames(Pinus))
+ggbiplot(Pinus.pca6, labels=colnames(Pinus))
 # look at origin of each observation - by trial?
 sp <- read.csv("./Scots_pine/Scots_pine_H.csv")
 sp <- na.omit(sp)
@@ -275,3 +275,12 @@ Pinus.prov <- c(rep('Abernethy',83),rep('Allt Cul',85),rep('Amat',88),rep('Ballo
                 rep('Loch Clair',88),rep('Meggernie',86),rep('Rhidorroch',87),rep('Rothiemurcus',87),
                 rep('Shieldaig',86),rep('Strath Oykel',83))
 ggbiplot(Pinus.pca6, ellipse = TRUE, groups = Pinus.prov)
+
+# look at PCA1 and PCA2
+ggbiplot(Pinus.pca6, ellipse = TRUE, choices=c(1,2), groups = Pinus.prov, varname.size=2,varname.adjust=2)
+#prov<-unique(Pinus$provenance)
+#fviz_pca_var(Pinus.pca6, repel = TRUE, col.var=Pinus.prov, addEllipses=TRUE)
+# look at PCA3 and PCA4
+ggbiplot(Pinus.pca6, ellipse = TRUE, choices=c(3,4), groups = Pinus.prov)
+# look at PCA5 and PCA6
+ggbiplot(Pinus.pca6, ellipse = TRUE, choices=c(5,6), groups = Pinus.trial)
