@@ -250,5 +250,9 @@ fviz_pca_var(Pinus.pca6, repel = TRUE)
 # no major changes
 
 # more PCA analysis (of centred and scaled variables)
-
-
+# where many variables correlate with one another, they will all contribute strongly to the same principal component
+summary(Pinus.pca6)
+# 40 principal components
+# each of these explains a percentage of the total variance
+# PC1 explained 39% of the variance. PC2 29% of the variance. PC3 12% of the variance. PC4 8%. PC5 5%.
+str(Pinus.pca6)
