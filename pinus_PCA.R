@@ -220,7 +220,7 @@ for (i in c(1:44)){
 }
 
 summary(Pinus)
-Pinus$DD18_T<-NULL
+Pinus$DD18_T.V1<-NULL
 
 Pinus.pca5 <- prcomp(Pinus, cor=TRUE, scores=TRUE) 
 summary(Pinus.pca5)
@@ -240,3 +240,15 @@ loadings(Pinus.pca5)
 fviz_pca_var(Pinus.pca5, repel = TRUE)
 
 write.csv(Pinus, "./Scots_pine/Scots_pine_H_cent_scal_allvars.csv" )
+
+# remove lat/long/elev to see if that changes things
+head(Pinus)
+Pinus<-Pinus[,-c(2:4)]
+Pinus.pca6 <- prcomp(Pinus, cor=TRUE, scores=TRUE)
+screeplot(Pinus.pca6, type = "lines")
+fviz_pca_var(Pinus.pca6, repel = TRUE)
+# no major changes
+
+# more PCA analysis (of centred and scaled variables)
+
+
