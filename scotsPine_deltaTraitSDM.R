@@ -676,17 +676,17 @@ models <- get.models(combinations, subset=TRUE)
 
 # "best models"
 # growing degree days above 18, number of frost-free days
-mod1<-lmer(log(H2) ~ DD_18_T + NFFD_T + (1|popSite) + (1|block),data = training)
+mod1<-lmer(log(H2) ~ DD_18_T + NFFD_T + (1|popSite) + (1|block),data = sp)
 # same and also precipitation as snow
-mod2<-lmer(log(H2) ~ DD_18_T + NFFD_T + PAS_T + (1|popSite) + (1|block),data = training)
+mod2<-lmer(log(H2) ~ DD_18_T + NFFD_T + PAS_T + (1|popSite) + (1|block),data = sp)
 # same with temperature difference
-mod3<-lmer(log(H2) ~ DD_18_T + NFFD_T + TD_T + (1|popSite) + (1|block),data = training)
+mod3<-lmer(log(H2) ~ DD_18_T + NFFD_T + TD_T + (1|popSite) + (1|block),data = sp)
 # combination of all of the above
-mod4<-lmer(log(H2) ~ DD_18_T + NFFD_T + PAS_T + TD_T + (1|popSite) + (1|block),data = training)
-mod5<-lmer(log(H2) ~ DD_18_T + EMNT_T + (1|popSite) + (1|block),data = training)
-mod6<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + (1|popSite) + (1|block),data = training)
-mod7<-lmer(log(H2) ~ DD_18_T + EMNT_T + MCMT_T + (1|popSite) + (1|block),data = training)
-mod8<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + MCMT_T + (1|popSite) + (1|block),data = training)
+mod4<-lmer(log(H2) ~ DD_18_T + NFFD_T + PAS_T + TD_T + (1|popSite) + (1|block),data = sp)
+mod5<-lmer(log(H2) ~ DD_18_T + EMNT_T + (1|popSite) + (1|block),data = sp)
+mod6<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + (1|popSite) + (1|block),data = sp)
+mod7<-lmer(log(H2) ~ DD_18_T + EMNT_T + MCMT_T + (1|popSite) + (1|block),data = sp)
+mod8<-lmer(log(H2) ~ DD_18_T + EMNT_T + Eref_T + MCMT_T + (1|popSite) + (1|block),data = sp)
 
 # realised EMNT was a typo by me when processing climate EU data
 # it's just EMT - extreme minimum temperature
@@ -718,3 +718,32 @@ hist(results$MAE,breaks=50)
 hist(results$RMSE,breaks=50)
 boxplot(results$MAE)
 boxplot(results$RMSE)
+
+# PCA model - try all possible combos
+require(MuMIn)
+options(na.action = "na.fail") # change the default "na.omit" to prevent models from being fitted to different datasets in case of missing values.
+
+head(sp)
+sp$H<-NULL
+
+PCAmodel <- lmer(log(H2) ~ DD_18_T + FFP_T + bFFP_P + FFP_P + TD_P +
+                      (1|popSite) + (1|block),
+                    data = sp)
+summary(PCAmodel)
+
+combinations <- dredge(PCAmodel)
+print(combinations)
+coefs <- coefTable(combinations)
+coefTable(combinations)[1]
+
+combinations<- combinations[order(combinations$AICc),]
+models <- get.models(combinations, subset=TRUE)
+
+pcaMOD1<-lmer(log(H2) ~ DD_18_T + FFP_T + (1|popSite) + (1|block),data = sp)
+pcaMOD2<-lmer(log(H2) ~ bFFP_P + DD_18_T + FFP_T + (1|popSite) + (1|block),data = sp)
+
+check_model(PCAmodel)
+check_model(pcaMOD2)
+
+compare_performance(PCAmodel,pcaMOD1,pcaMOD2, rank = TRUE)
+plot(compare_performance(mod1,mod2,mod3,mod4,mod5,mod6,mod7,mod8, rank = TRUE))
