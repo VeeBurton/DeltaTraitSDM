@@ -220,7 +220,7 @@ for (i in c(1:44)){
 }
 
 summary(Pinus)
-Pinus$DD18_T.V1<-NULL
+Pinus$DD18_T<-NULL
 
 Pinus.pca5 <- prcomp(Pinus, cor=TRUE, scores=TRUE) 
 summary(Pinus.pca5)
@@ -256,3 +256,22 @@ summary(Pinus.pca6)
 # each of these explains a percentage of the total variance
 # PC1 explained 39% of the variance. PC2 29% of the variance. PC3 12% of the variance. PC4 8%. PC5 5%.
 str(Pinus.pca6)
+library(ggbiplot)
+ggbiplot(Pinus.pca6, labels=rownames(Pinus))
+# look at origin of each observation - by trial?
+sp <- read.csv("./Scots_pine/Scots_pine_H.csv")
+sp <- na.omit(sp)
+Pinus$trial<-sp$Trial
+summary(Pinus)
+Pinus.trial <- c(rep("BORDERS",653),rep("GLENSAUGH",667),rep("INVEREWE",472))
+ggbiplot(Pinus.pca6, ellipse = TRUE, groups = Pinus.trial)
+# by provenance
+Pinus$provenance<-sp$ID1
+summary(Pinus$provenance)
+Pinus.prov <- c(rep('Abernethy',83),rep('Allt Cul',85),rep('Amat',88),rep('Ballochbuie',80),
+                rep('Ben Eighe',87), rep('Black Wood',84),rep('Coille Coire Chuilc',87),
+                rep('Cona Glen',85),rep('Crannach',86),rep('Glen Affic',87),rep('Glen Cannich',85),
+                rep('Glen Derry',86),rep('Glen Einig',86),rep('Glen Loy',84),rep('Glen Tanar',82),
+                rep('Loch Clair',88),rep('Meggernie',86),rep('Rhidorroch',87),rep('Rothiemurcus',87),
+                rep('Shieldaig',86),rep('Strath Oykel',83))
+ggbiplot(Pinus.pca6, ellipse = TRUE, groups = Pinus.prov)
