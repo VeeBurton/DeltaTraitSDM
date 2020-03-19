@@ -518,6 +518,7 @@ sp2<- read.csv("./Scots_pine/Scots_pine_H.csv")
 sp2<-na.omit(sp2)
 sp$Trial <- sp2$Trial
 sp$Provenance <- sp2$Provenance
+sp$ID <- sp2$ID1
 sp$Block <- sp2$Block
 sp$Family <- sp2$Family
 sp$Seedling <- sp2$Seedling
@@ -547,8 +548,11 @@ ggplot(sp, aes(row, column, fill = W17Height))+
 colnames(sp)[1]<-"H"
 
 # boxplots
-boxplot(sp$H ~ sp$Trial)
-boxplot(sp$H ~ sp$Provenance)
+boxplot(sp$H2 ~ sp$Trial)
+par(mar=c(10,4,4,2))
+boxplot(sp$H2 ~ sp$ID, las=2)
+dotchart(sp$H2, groups=factor(sp$Trial), color = sp$Trial)
+dotchart(sp$H2, groups=factor(sp$ID), color = sp$ID)
 
 # relationships between the response variable and the explanatory variables
 # pairplots
@@ -747,3 +751,37 @@ check_model(pcaMOD2)
 
 compare_performance(PCAmodel,pcaMOD1,pcaMOD2, rank = TRUE)
 plot(compare_performance(mod1,mod2,mod3,mod4,mod5,mod6,mod7,mod8, rank = TRUE))
+
+
+# increase understanding of data
+# look at height by main explanatory variables
+require(Hmisc)
+# read in non-standardised data
+Pinus<-read.csv("./Scots_pine/Scots_pine_H.csv")
+Pinus$X<-NULL
+# remove NAs
+Pinus<-na.omit(Pinus)
+head(Pinus)
+summary(Pinus$DD_18_T)
+Pinus$DD18_cut<-cut(Pinus$DD_18_T, seq(3600,4000,100))
+summary(Pinus$DD18_cut)
+dotchart(Pinus$W17Height,groups = factor(Pinus$DD18_cut),color = Pinus$Trial, ylab='DD18 (grouped)', xlab = 'Height', main='Coloured by trial')
+dotchart(Pinus$W17Height,groups = factor(Pinus$DD18_cut),color = Pinus$Provenance, ylab='DD18 (grouped)', xlab = 'Height', main='Coloured by provenance')
+
+summary(Pinus$FFP_T)
+Pinus$FFP_cut<-cut(Pinus$FFP_T, seq(170,220,10))
+summary(Pinus$FFP_cut)
+dotchart(Pinus$W17Height,groups = factor(Pinus$FFP_cut),color = Pinus$Trial, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by trial')
+dotchart(Pinus$W17Height,groups = factor(Pinus$FFP_cut),color = Pinus$Provenance, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by provenance')
+
+summary(Pinus$bFFP_P)
+Pinus$bFFP_cut<-cut(Pinus$bFFP_P, seq(90,150,10))
+summary(Pinus$bFFP_cut)
+dotchart(Pinus$W17Height,groups = factor(Pinus$bFFP_cut),color = Pinus$Trial, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by trial')
+dotchart(Pinus$W17Height,groups = factor(Pinus$bFFP_cut),color = Pinus$Provenance, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by provenance')
+
+summary(Pinus$TD_P)
+Pinus$TD_cut<-cut(Pinus$TD_P, seq(10,20,5))
+summary(Pinus$TD_cut)
+dotchart(Pinus$W17Height,groups = factor(Pinus$TD_cut),color = Pinus$Trial, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by trial')
+dotchart(Pinus$W17Height,groups = factor(Pinus$TD_cut),color = Pinus$Provenance, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by provenance')
