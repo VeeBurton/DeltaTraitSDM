@@ -763,10 +763,39 @@ Pinus$X<-NULL
 Pinus<-na.omit(Pinus)
 head(Pinus)
 summary(Pinus$DD_18_T)
-Pinus$DD18_cut<-cut(Pinus$DD_18_T, seq(3600,4000,100))
+Pinus$DD18_cut<-cut(Pinus$DD_18_T, seq(3600,4000,10))
 summary(Pinus$DD18_cut)
 dotchart(Pinus$W17Height,groups = factor(Pinus$DD18_cut),color = Pinus$Trial, ylab='DD18 (grouped)', xlab = 'Height', main='Coloured by trial')
 dotchart(Pinus$W17Height,groups = factor(Pinus$DD18_cut),color = Pinus$Provenance, ylab='DD18 (grouped)', xlab = 'Height', main='Coloured by provenance')
+
+ggplot(Pinus)+
+  geom_jitter(aes(DD18_cut,W17Height,color=Trial))
+
+trial_lm <- lm(W17Height~DD18_cut + Trial, data=Pinus)
+
+# Augment the model
+augmented_mod <- augment(trial_lm)
+glimpse(augmented_mod)
+
+# scatterplot, with color
+ggplot(augmented_mod, aes(x = DD18_cut, y = W17Height, color = Trial)) + 
+  geom_point()+
+  geom_line(aes(y = .fitted))
+
+ggplot(Pinus)+
+  geom_jitter(aes(DD18_cut,W17Height,color=Provenance))
+
+prov_lm <- lm(W17Height~factor(DD18_cut) + Provenance, data=Pinus)
+tidy(prov_lm)
+
+# Augment the model
+augmented_mod2 <- augment(prov_lm)
+glimpse(augmented_mod2)
+
+# scatterplot, with color
+ggplot(augmented_mod2, aes(x = factor.DD18_cut., y = W17Height, color = Provenance)) + 
+  geom_point()+
+  geom_line(aes(y = .fitted))
 
 summary(Pinus$FFP_T)
 Pinus$FFP_cut<-cut(Pinus$FFP_T, seq(170,220,10))
