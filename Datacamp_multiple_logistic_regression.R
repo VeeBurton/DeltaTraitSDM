@@ -46,7 +46,7 @@ anova(trial_model,block_model)
 
 # to include an interaction term
 # the colon : represents the interaction
-interaction_mod <- lm(H ~ DD_18_T + Trial + DD_18_T:Trial ,data = Pinus)
+interaction_mod <- lm(H ~ factor(DD_18_T) + Trial + DD_18_T:Trial ,data = Pinus)
 interaction_mod
 
 ggplot(Pinus, aes(DD_18_P,H,colour=Trial))+
@@ -57,6 +57,25 @@ ggplot(Pinus, aes(MAT_P,H,colour=Trial))+
   geom_point()+
   geom_smooth(method='lm',se=FALSE)
 
+#############
+# adding another numerical explanatory variable
+#############
+# data space is now 3D so ggplot won't work (no z aes)
+
+# can tile the plane
+grid<-Pinus %>% modelr::data_grid(mwmt=modelr::seq_range(MWMT_T,by=1),
+                    pas=modelr::seq_range(PAS_T,by=1))
+mod <- lm(H ~ MWMT_T + PAS_T, data=Pinus)
+H_hats <- augment(mod,newdata = grid)
+
+# or 3D visualisation
+library(plotly)
+x<-unique(Pinus$PAS_T)
+y<-unique(Pinus$H)
+plane
+plot_ly(data=Pinus, z=~MWMT_T, x=~PAS_T, y=~H, opacity=0.6) %>% 
+  add_markers(marker=list(size=2)) %>% 
+  add_surface(x=~x,y=~y,z=~z, showcale=FALSE,cmax=1)
 
 ##############
 # 26/03/2020
