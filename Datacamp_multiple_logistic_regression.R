@@ -1,5 +1,21 @@
+library(lme4)
+library(nlme)
+library(broom)
+library(ggplot2)
+library(performance)
 
 ### Multiple and Logistic Regression
+
+Pinus<-read.csv("./Scots_pine/Scots_pine_H.csv")
+Pinus$X<-NULL
+# remove NAs
+Pinus<-na.omit(Pinus)
+colnames(Pinus)[11]<-'H'
+head(Pinus)
+
+Pinus <- Pinus %>% mutate(block=factor(Trial:Block),
+                    popSite=factor(Trial:Provenance),
+                    famSite=factor(Trial:Family))
 
 # notes from datacamp course
 # can include variables as both fixed and random effects
@@ -14,15 +30,32 @@
 # could do same for provenance
 
 # Build the Null model with only provenance as a random-effect
-null_model <- lmer(log(H2) ~ (1 | Provenance) , data = sp)
+null_model <- lmer(log(H) ~ (1 | Provenance) , data = Pinus)
 
 # Build the Trial model with Trial as a fixed and random slope and provenance as the random-effect
-trial_model <- lmer(log(H2) ~ Trial + (1 + Trial | Provenance) , data = sp)
-block_model <- lmer(log(H2) ~ Block + (1 + Block | popSite), data = sp) # use explicitly nested vars (Block = Trial:Block, popSite=Trial:Provenance)
+trial_model <- lmer(log(H) ~ Trial + (1 + Trial | Provenance) , data = Pinus)
+block_model <- lmer(log(H) ~ Block + (1 + Block | popSite), data = Pinus) # use explicitly nested vars (Block = Trial:Block, popSite=Trial:Provenance)
 
 # Compare null_model and year_model using an anova
 anova(null_model, trial_model)
 anova(trial_model,block_model)
+
+#############
+# interaction terms
+#############
+
+# to include an interaction term
+# the colon : represents the interaction
+interaction_mod <- lm(H ~ DD_18_T + Trial + DD_18_T:Trial ,data = Pinus)
+interaction_mod
+
+ggplot(Pinus, aes(DD_18_P,H,colour=Trial))+
+  geom_point()+
+  geom_smooth(method='lm',se=FALSE)
+
+ggplot(Pinus, aes(MAT_P,H,colour=Trial))+
+  geom_point()+
+  geom_smooth(method='lm',se=FALSE)
 
 
 ##############
@@ -86,3 +119,4 @@ augie2 <- augie %>% mutate(odds_hat=.fitted/(1-.fitted))
 # logistic model on odds scale
 data_space +
   geom_line(data=augie2,aes(DD18bin,odds_hat), color = "red")
+
