@@ -32,10 +32,10 @@ x<-paste(sp$Provenance,sp$Trial,sep='_')
 m<-lm(y~x) # model of height by trial:provenance
 summary(m)
 anova(m)
-a<-duncan.test(m,trt="x")
+a<-agricolae::duncan.test(m,trt="x")
 plot(a) # this suggests there are significant differences between provenance at trial sites
+head(a)
 
-?agricolae
 
 ##################
 
@@ -61,44 +61,127 @@ sp2 <- sp %>% mutate(MATdiff = MAT_P-MAT_T,
 head(sp2[,c(56:73)])
 
 # mean height per provenance within each trial site
-mean_H<-aggregate(H~Trial*Provenance,sp2,FUN=mean)
+mean_H<-aggregate(H~Trial:Provenance,sp2,FUN=mean)
 #sp2<-na.omit(sp2)
-sp2<- sp2 %>% 
-  group_by(Trial,Provenance) %>% 
-  mutate(mean_H = mean(H))
-sp2$mean_H
 
 # all variables from PC1 of Richard's thesis
 # growing degree-days, monthly mean temps for Feb and July, annual precipitation, extreme temperature range
-
-# growing degree days
-sp2<- sp2 %>% 
+mean_diffs <- sp2 %>% 
   group_by(Trial,Provenance) %>% 
-  mutate(mean_DD18P = mean(DD_18_P),
-         mean_DD18T = mean(DD_18_T),
-         mean_DD18d = mean(DD18diff))
+  summarise(meanH = mean(H, na.rm=TRUE),
+            mean_DD18p = mean(DD_18_P),
+            mean_DD18t = mean(DD_18_T),
+            mean_DD18d = mean(DD18diff),
+            mean_PASp = mean(PAS_P),
+            mean_PASt = mean(PAS_T),
+            mean_PASd = mean(PASdiff),
+            mean_EMTp = mean(EMNT_P),
+            mean_EMTt = mean(EMNT_T),
+            mean_EMTd = mean(EMTdiff),
+            mean_MCMTp = mean(MCMT_P),
+            mean_MCMTt = mean(MCMT_T),
+            mean_MCMTd = mean(MCMTdiff),
+            mean_MWMTp = mean(MWMT_P),
+            mean_MWMTt = mean(MWMT_T),
+            mean_MWMTd = mean(MWMTdiff),
+            mean_TDp = mean(TD_P),
+            mean_TDt = mean(TD_T),
+            mean_TDd = mean(TDdiff))
 
-sp2 %>% 
-  ggplot(aes(mean_DD18T,H,colour=Provenance))+geom_point()+stat_smooth()
+mean_diffs %>% 
+  gather(key='variable',value='mean', -Trial,-Provenance,-meanH) %>% 
+  filter(variable %in% c("mean_DD18p","mean_DD18t","mean_EMTd","mean_MCMTd","mean_MWMTd","mean_TDd")) %>% 
+  ggplot(aes(mean,meanH))+
+    facet_wrap(~variable)+
+    geom_point()+
+    stat_smooth()
 
-DD18diff<-aggregate(DD18diff~Trial*Provenance,sp2,FUN=mean)
-plot(mean_H[,3]~DD18diff[,3],col=mean_H$Provenance,pch=19) # no pattern/relationship
-DD18p<-aggregate(DD_18_P~Trial*Provenance,sp2,FUN=mean)
-plot(mean_H[,3]~DD18p[,3],col=mean_H$Provenance,pch=19) # no pattern/relationship
-DD18t<-aggregate(DD_18_T~Trial*Provenance,sp2,FUN=mean)
-plot(mean_H[,3]~DD18t[,3],col=mean_H$Provenance,pch=19) # inverse bell curve?
+# look at variables with largest differences between provenances and trials
+summary(sp2[,c(56:73)])
+# MAP, MSP, DD0, DD18, NFFD, bFFP, eFFP, FFP, PAS, Eref, CMD
+mean_diffs2 <- sp2 %>% 
+  group_by(Trial,Provenance) %>% 
+  summarise(meanH = mean(H, na.rm=TRUE),
+            MAP = mean(MAPdiff),
+            MSP = mean(MSPdiff),
+            DD0 = mean(DD0diff),
+            DD18 = mean(DD18diff),
+            NFFD = mean(DD18diff),
+            bFFP = mean(bFFPdiff),
+            FFP = mean(FFPdiff),
+            eFFP = mean(eFFPdiff),
+            PAS = mean(PASdiff),
+            Eref = mean(Erefdiff),
+            CMD = mean(CMDdiff))
 
-# annual precipitation
-PASdiff<-aggregate(PASdiff~Trial*Provenance,sp2,FUN=mean)
-plot(mean_H[,3]~PASdiff[,3],col=mean_H$Provenance,pch=19)
-PASp<-aggregate(PAS_P~Trial*Provenance,sp2,FUN=mean)
-plot(mean_H[,3]~PASp[,3],col=mean_H$Provenance,pch=19) # no pattern/relationship
-PASt<-aggregate(PAS_T~Trial*Provenance,sp2,FUN=mean)
-plot(mean_H[,3]~PASt[,3],col=mean_H$Provenance,pch=19) # inverse bell curve?
+mean_diffs2 %>% 
+  gather(key='variable',value='mean.diff', -Trial,-Provenance,-meanH) %>% 
+  ggplot(aes(mean.diff,meanH))+
+  facet_wrap(~variable)+
+  geom_point()+
+  stat_smooth()+
+  ylab("Mean height (mm)")+
+  xlab("Mean difference between trial and provenance sites")+
+  ggtitle("Height ~ variables with large variation between trial and prov sites")
 
+# re-do with standardised vars
+sp3 <- read.csv("./Scots_pine/Scots_pine_H_cent_scal_allvars.csv") # 
+sp3$X <- NULL
+str(sp3)
+colnames(sp3)[1]<-"H"
+sp<-na.omit(sp)
+sp3$Hraw <- sp$H
+sp3$Trial <- sp$Trial
+sp3$Provenance <- sp$Provenance
+sp3 <- sp3 %>% mutate(MATdiff = MAT_P-MAT_T,
+                     MWMTdiff = MWMT_P-MWMT_T,
+                     MCMTdiff = MCMT_P-MCMT_T,
+                     TDdiff = TD_P-TD_T,
+                     MAPdiff = MAP_P-MAP_T,
+                     MSPdiff = MSP_P-MSP_T,
+                     AHMdiff = AHM_P-AHM_T,
+                     SHMdiff = SHM_P-SHM_T,
+                     DD0diff = DD0_P-DD0_T,
+                     DD18diff = DD_18_P-DD_18_T,
+                     NFFDdiff = NFFD_P-NFFD_T,
+                     bFFPdiff = bFFP_P-bFFP_T,
+                     eFFPdiff = eFFP_P-eFFP_T,
+                     FFPdiff = FFP_P-FFP_T,
+                     PASdiff = PAS_P-PAS_T,
+                     EMTdiff = EMNT_P-EMNT_T,
+                     Erefdiff = Eref_P-Eref_T,
+                     CMDdiff = CMD_P-CMD_T)
+mean_diffs3 <- sp3 %>% 
+  group_by(Trial,Provenance) %>% 
+  summarise(meanH = mean(Hraw, na.rm=TRUE),
+            MAP = mean(MAPdiff),
+            MSP = mean(MSPdiff),
+            DD0 = mean(DD0diff),
+            DD18 = mean(DD18diff),
+            NFFD = mean(DD18diff),
+            bFFP = mean(bFFPdiff),
+            FFP = mean(FFPdiff),
+            eFFP = mean(eFFPdiff),
+            PAS = mean(PASdiff),
+            Eref = mean(Erefdiff),
+            CMD = mean(CMDdiff))
+
+mean_diffs3 %>% 
+  gather(key='variable',value='mean.diff', -Trial,-Provenance,-meanH) %>% 
+  ggplot(aes(mean.diff,meanH))+
+  facet_wrap(~variable)+
+  geom_point()+
+  stat_smooth()+
+  ylab("Mean height (mm)")+
+  xlab("Mean difference between trial and provenance sites")+
+  ggtitle("Height ~ standardised variables with large variation between trial and prov sites")
 
 ### lattice 
-
+library(lattice)
+histogram(~H,data=sp)
+md3<- mean_diffs2 %>% 
+  gather(key='variable',value='mean.diff', -Trial,-Provenance,-meanH) 
+xyplot(meanH~mean.diff | variable, data=md3)
 
 
 ### use coding club process
