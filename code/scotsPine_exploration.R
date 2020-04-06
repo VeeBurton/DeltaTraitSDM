@@ -28,7 +28,7 @@ sp %>%
 
 y<-sp$H
 x<-paste(sp$Provenance,sp$Trial,sep='_')
-m<-lm(y~x)
+m<-lm(y~x) # model of height by trial:provenance
 summary(m)
 anova(m)
 a<-duncan.test(m,trt="x")
@@ -56,15 +56,28 @@ sp2 <- sp %>% mutate(MATdiff = MAT_P-MAT_T,
                      CMDdiff = CMD_P-CMD_T)
 
 head(sp2[,c(56:73)])
-colnames(sp2)[11]<-"H"
 
 # mean height per provenance within each trial site
 mean_H<-aggregate(H~Trial*Provenance,sp2,FUN=mean)
+#sp2<-na.omit(sp2)
+sp2<- sp2 %>% 
+  group_by(Trial,Provenance) %>% 
+  mutate(mean_H = mean(H))
+sp2$mean_H
 
 # all variables from PC1 of Richard's thesis
 # growing degree-days, monthly mean temps for Feb and July, annual precipitation, extreme temperature range
 
 # growing degree days
+sp2<- sp2 %>% 
+  group_by(Trial,Provenance) %>% 
+  mutate(mean_DD18P = mean(DD_18_P),
+         mean_DD18T = mean(DD_18_T),
+         mean_DD18d = mean(DD18diff))
+
+sp2 %>% 
+  ggplot(aes(mean_DD18T,H,colour=Provenance))+geom_point()+stat_smooth()
+
 DD18diff<-aggregate(DD18diff~Trial*Provenance,sp2,FUN=mean)
 plot(mean_H[,3]~DD18diff[,3],col=mean_H$Provenance,pch=19) # no pattern/relationship
 DD18p<-aggregate(DD_18_P~Trial*Provenance,sp2,FUN=mean)
