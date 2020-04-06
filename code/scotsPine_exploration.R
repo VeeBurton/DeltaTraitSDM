@@ -97,6 +97,8 @@ PASt<-aggregate(PAS_T~Trial*Provenance,sp2,FUN=mean)
 plot(mean_H[,3]~PASt[,3],col=mean_H$Provenance,pch=19) # inverse bell curve?
 
 
+### lattice 
+
 
 
 ### use coding club process
@@ -161,4 +163,4 @@ mean(mixed_model_differences ^ 2) # better predictions
 # isn't yet complete because of a problem: 
 # whenever you use it you will find that the model with the additional explanatory variable 
 # has smaller prediction errors than the base model! 
-# the technique always gives the same indication: include the additional explanatory variable.
+# the technique always gives the same indication: include the additional explanatory variable
