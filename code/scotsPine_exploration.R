@@ -2,6 +2,7 @@
 library(tidyverse)
 library(lme4)
 library(lmerTest)
+library(broom)
 library(agricolae)
 library(viridis)
 
@@ -33,6 +34,8 @@ summary(m)
 anova(m)
 a<-duncan.test(m,trt="x")
 plot(a) # this suggests there are significant differences between provenance at trial sites
+
+?agricolae
 
 ##################
 
@@ -92,3 +95,65 @@ PASp<-aggregate(PAS_P~Trial*Provenance,sp2,FUN=mean)
 plot(mean_H[,3]~PASp[,3],col=mean_H$Provenance,pch=19) # no pattern/relationship
 PASt<-aggregate(PAS_T~Trial*Provenance,sp2,FUN=mean)
 plot(mean_H[,3]~PASt[,3],col=mean_H$Provenance,pch=19) # inverse bell curve?
+
+
+
+
+### use coding club process
+# use standardised data
+sp3 <- read.csv("./Scots_pine/Scots_pine_H_cent_scal_allvars.csv") # 
+sp3$X <- NULL
+str(sp3)
+colnames(sp3)[1]<-"H"
+sp<-na.omit(sp)
+sp3$Hraw <- sp$H
+sp3$Trial <- sp$Trial
+sp3$Provenance <- sp$Provenance
+
+basic.lm <- lm(Hraw ~ Trial:Provenance, data = sp3)
+summary(basic.lm)
+# plot the data
+ggplot(sp3, aes(x =Trial:Provenance, y = H)) +
+    geom_jitter() +
+    geom_smooth(method = "lm")
+# plot residuals
+plot(basic.lm, which = 1) # red line should be flat like the dashed grey line
+# look at qqplot
+plot(basic.lm, which = 2) # points should fall on diagonal line
+
+# check for data independence - essentially checking if need to account for random effects
+boxplot(Hraw ~ Trial:Provenance, data = sp3)
+# colour plot
+ggplot(sp3, aes(x = Trial:Provenance, y = Hraw, colour = Trial:Provenance)) +
+    geom_point(size = 2) +
+    theme_classic() +
+    theme(legend.position = "none")
+# split plot
+ggplot(aes(Trial:Provenance, Hraw), data = sp3) + 
+    geom_point() + 
+    facet_wrap(~ Trial:Provenance) + # create a facet for each trial
+    xlab("Trial:Provenance") + 
+    ylab("height")
+
+# include provenance as a fixed effect
+prov.lm <- lm(Hraw ~ Trial:Provenance, data = sp3)
+tidy(prov.lm)
+# as a random effect
+mixed.lmer <- lmer(Hraw ~ DD_18_T + (1|Trial/Provenance), data = sp3)
+tidy(mixed.lmer)
+plot(mixed.lmer) 
+qqnorm(resid(mixed.lmer))
+qqline(resid(mixed.lmer)) # points should fall on line
+
+
+### comparing models (datacamp - intro to statistical modelling)
+basic.lm
+mixed.lmer
+basic_output <- predict(basic.lm, newdata=sp3)
+mixed_output <- predict(mixed.lmer, newdata=sp3)
+# case-by-case differences
+basic_model_differences <- with(sp3, H - basic_output)
+mixed_model_differences <- with(sp3, H - mixed_output)
+# calculate mean square errors
+mean(basic_model_differences ^ 2)
+mean(mixed_model_differences ^ 2) # better predictions
