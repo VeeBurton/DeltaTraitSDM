@@ -154,6 +154,11 @@ mixed_output <- predict(mixed.lmer, newdata=sp3)
 # case-by-case differences
 basic_model_differences <- with(sp3, H - basic_output)
 mixed_model_differences <- with(sp3, H - mixed_output)
-# calculate mean square errors
+# calculate mean square errors (MSE)
 mean(basic_model_differences ^ 2)
 mean(mixed_model_differences ^ 2) # better predictions
+# but using MSE to decide whether to include an explanatory variable in a linear model architecture
+# isn't yet complete because of a problem: 
+# whenever you use it you will find that the model with the additional explanatory variable 
+# has smaller prediction errors than the base model! 
+# the technique always gives the same indication: include the additional explanatory variable.
