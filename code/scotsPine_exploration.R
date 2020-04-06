@@ -3,16 +3,30 @@ library(tidyverse)
 library(lme4)
 library(lmerTest)
 library(agricolae)
+library(viridis)
 
 #################
 
 sp <- read.csv("./Scots_pine/Scots_pine_H.csv") # raw data
 sp$X <- NULL
 str(sp)
+colnames(sp)[11]<-"H"
 
-boxplot(W17Height~Trial:Provenance,sp)
-boxplot(W17Height~Provenance,sp)
-y<-sp$W17Height
+#boxplot(H~Trial:Provenance,sp)
+sp %>% 
+  ggplot(aes(Trial:Provenance,H, colour=Trial))+geom_boxplot()+
+  theme_minimal()+
+  ylab("Height (mm)")+
+  theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1))
+
+#boxplot(H~Provenance,sp)
+sp %>% 
+  ggplot(aes(Provenance,H, colour=Provenance))+geom_boxplot()+
+  theme_minimal()+
+  ylab("Height (mm)")+
+  theme(axis.text.x = element_blank())
+
+y<-sp$H
 x<-paste(sp$Provenance,sp$Trial,sep='_')
 m<-lm(y~x)
 summary(m)
