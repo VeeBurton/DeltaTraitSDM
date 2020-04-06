@@ -19,7 +19,7 @@ setwd("C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTrait
 list.files()
 
 # so, max temp of warmest month found to be most important explanatory variable for the trial sites?
-# or is it max precipitation of wettest month (biovars bio13)
+# or is it max precipitation of wettest month (biovars bio13) (yes, confirmed with marta)
 
 # current climate
 Bio13_cc<-raster('./Fagus/bio13.gri')

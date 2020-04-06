@@ -1,0 +1,330 @@
+---
+title: "Duncan Ray - Native Scots Pine and Climate Variables - 007c20 - 100401-1006"
+author: "Toni Clarke"
+date: "16 March 2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message=F, warning =F)
+```
+
+```{r}
+
+library(tidyverse)
+library(ggplot2)
+library(lme4)
+library(knitr)
+library(lmerTest)
+library(pdp)
+#library("sjPlot", lib.loc="C:/R-Packages")
+
+#setwd("/Users/toni.clarke/OneDrive - Forest Research/Documents/007c20/")
+```
+
+# Methods
+
+\newline
+Analysis was conducted in R (version 3.5.2, R Core Team 2018), with graphics produced using ggplot2 in R (Wickham, 2016). 
+
+177 families of half sibs derived from 21 populations are grown on 3 different planting sites. Several climate variables are available and these are mapped to different planting sites - each planting site is assigned one value for a climate variable and so there are only ever 3 values for each variable. 
+
+A linear model was initally built on a subset of pre-selected populations representing the most Northern/Southern sites etc (total of 33 families). The CC9 family was identified as having a significant interaction with AHM. 
+
+This model was then applied to all families - excluding families where there were zero trees available at a planting site, and excluding all trees with a height of 0. This left 159 families and 1697 observations. The following model was fit and also applied to the PPT_wt variable. 
+
+Height ~ Family + AHM + Family*AHM + (1|Population)
+
+
+Differences between populations and the interaction with climate variables are also of interest. The following mixed linear model was fit, with population now fit as a fixed effect, and family as a random effect to account for similarities between half-sibs. AHM and PPT_wt were both analysed. 
+
+Height ~ Population + AHM + Population*AHM + (1|Family)
+
+
+```{r}
+
+# Read in and clean data
+
+  data <- read.csv("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/Scotspine_Common_Garden_Heights_3.csv", header=T)
+
+# Seqno and tag are unique identifiers
+# Three planting sites - BORDERS (3), GLENSAUGH (1), INVEREWE (2)
+# 4 Blocks, need to correct c to C
+# 168 per block at each site but Inverewe does not have a block D 
+  data$Block[data$Block=="c"]<-"C"
+  data$Block <- factor(data$Block)
+  
+# 7 seed zones EC, NC NE, NN, NW, SC, SW
+# ~ 96 of each seed zone at each site, but ~72 at Inverewe due to no Block D
+# ~ 24 of each seed zone at each site in each block (24*4)
+  
+# 21 Different populations - 32 at each site (8 on each block)
+# Each population is unique to a seed.zone, except GD which has 87 from EC and one from NE - error?
+  data$Seed.Zone[data$Population=="GD"] <- "EC"
+  
+# Each seed zone has 3 populations derived from it.
+  
+# 177 different families, made up of provenance (population) name then the mother tree - between 4 and 11 entries for each family - these contain the half sibs
+
+# Interested in how differen climate variables impact phenotype depending on family
+# Wants mean line plots per family.
+# Statistical significance could be determined using
+# Pheno ~ family + climate + family*climate + seed.Zone + (1|population) + (1|blocksite)
+# Using moisture index as example variable - AHM
+  
+# Make a list of families which have zero entries at any of the sites
+# can filter analysis on tolose variable
+  table_data <- data.frame(table(data$Family, data$PlantingSite))
+  tolose <- table_data[table_data$Freq==0,1]
+```
+
+
+
+```{r}
+# Make graphs with mean height per family plotted and then trend lines for AHM
+# using loess smooth - Local Polynomial Regression Fitting
+# Filter by population and facet_wrap by family
+
+
+  F1 <- data %>%
+  filter(Population =="CR") %>%
+    ggplot(aes(x=AHM, y=W17Height, color=Family))+
+    geom_point()+
+    stat_smooth() +
+    ylim(0,30) +
+    scale_x_continuous(limits=c(16,30),breaks=c(17.5,23.44,27.54), labels=c("17.5", "23.4", "27.5")) +
+    facet_wrap(~Family) +
+    theme(legend.position="none")
+
+  F2 <- data %>%
+  filter(Population =="CR") %>%
+    ggplot(aes(x=PPT_wt, y=W17Height, color=Family))+
+    geom_point()+
+    stat_smooth() +
+    ylim(0,30) +
+    scale_x_continuous(limits=c(175,350),breaks=c(182.4,218.9,342), labels=c("182.4", "218.9", "342")) +
+    facet_wrap(~Family) +
+    theme(legend.position="none")
+  
+    F5a <- data %>%
+  filter(Family =="CR4") %>%
+    ggplot(aes(x=PPT_wt, y=W17Height, color=Family))+
+    geom_point()+
+    stat_smooth() +
+    ylim(0,30) +
+    scale_x_continuous(limits=c(175,350),breaks=c(182.4,218.9,342), labels=c("182.4", "218.9", "342"))
+    
+    F5b <- data %>%
+  filter(Family =="CR4") %>%
+    ggplot(aes(x=AHM, y=W17Height, color=Family))+
+    geom_point()+
+    stat_smooth() +
+    ylim(0,30) +
+    scale_x_continuous(limits=c(16,30),breaks=c(17.5,23.44,27.54), labels=c("17.5", "23.4", "27.5"))
+
+  F6 <- data %>%
+    ggplot(aes(x=PPT_wt, y=W17Height, color=Population))+
+    geom_point()+
+    stat_smooth() +
+    ylim(0,30) +
+    scale_x_continuous(limits=c(175,350),breaks=c(182.4,218.9,342), labels=c("182.4", "218.9", "342")) +
+    facet_wrap(~Population) +
+    theme(legend.position="none")
+  
+    F7 <- data %>%
+    ggplot(aes(x=AHM, y=W17Height, color=Population))+
+    geom_point()+
+    stat_smooth() +
+    ylim(0,30) +
+    scale_x_continuous(limits=c(16,30),breaks=c(17.5,23.44,27.54), labels=c("17.5", "23.4", "27.5")) +
+    facet_wrap(~Population) +
+    theme(legend.position="none")
+    
+    F8a <- data %>%
+    filter(Population=="BE") %>%
+    ggplot(aes(x=PPT_wt, y=W17Height, color=Population))+
+    geom_point()+
+    stat_smooth() +
+    ylim(0,30) +
+    scale_x_continuous(limits=c(175,350),breaks=c(182.4,218.9,342), labels=c("182.4", "218.9", "342")) +
+    facet_wrap(~Population) +
+    theme(legend.position="none")
+    
+    F8b <- data %>%
+    filter(Population=="BE") %>%
+    ggplot(aes(x=AHM, y=W17Height, color=Population))+
+    geom_point()+
+    stat_smooth() +
+    ylim(0,30) +
+    scale_x_continuous(limits=c(16,30),breaks=c(17.5,23.44,27.54), labels=c("17.5", "23.4", "27.5")) +
+    facet_wrap(~Population) +
+    theme(legend.position="none")
+    
+
+    
+
+# Plot predicted regression lines by finding best fit model for AHM
+# Only take data where there are trees present at every site (or not enough variation for linear model)
+# Only take trees with height greater than zero
+
+  clean_data <- data[!data$Family %in% tolose,]
+  clean_data <- clean_data[clean_data$W17Height > 0, ]
+  clean_data$Family <- factor(clean_data$Family)
+  
+# Model testing effect of Family and AHM and interaction
+# 159 families, and 159 interaction
+
+  m3 <- lmer(W17Height ~ Family + AHM + Family*AHM + (1|Population), data=clean_data)
+  results <- data.frame(coef(summary(m3)))
+  
+  m3a <- lmer(W17Height ~ Family + PPT_wt + Family*PPT_wt + (1|Population), data=clean_data)
+  results_a <- data.frame(coef(summary(m3a)))
+  
+# Take data with p-value less than 0.05
+  results_sig <- results[results$`Pr...t..` <= 0.05,]
+  
+# Model testing effect of Population and AHM and interaction
+  m4 <- lmer(W17Height ~ Population + AHM + Population*AHM + (1|Family), data=clean_data)
+  results_m4 <- data.frame(coef(summary(m4)))
+  
+  m5 <- lmer(W17Height ~ Population + PPT_wt + Population*PPT_wt + (1|Family), data=clean_data)
+  results_m5 <- data.frame(coef(summary(m5)))
+  
+  results_sigm4 <- results_m4[results_m4$`Pr...t..` <= 0.05,]
+  results_sigm5 <- results_m5[results_m5$`Pr...t..` <= 0.05,]
+
+
+  newdat1 <- expand.grid(
+    PPT_wt=c(182.4,218.9,342)
+    , Family=levels(clean_data$Family),
+     W17Height = 0
+)
+  newdat1$W17Height <- predict(m3a,newdat1,re.form=NA)
+  mm <- model.matrix(terms(m3a),newdat1)
+  pvar1 <- diag(mm %*% tcrossprod(vcov(m3a),mm))
+  tvar1 <- pvar1+VarCorr(m3a)$Population[1] # As population is ranef
+  
+  cmult <- 1.96 
+newdat1 <- data.frame(
+    newdat1
+    , plo = newdat1$W17Height-cmult*sqrt(pvar1)
+    , phi = newdat1$W17Height+cmult*sqrt(pvar1)
+    , tlo = newdat1$W17Height-cmult*sqrt(tvar1)
+    , thi = newdat1$W17Height+cmult*sqrt(tvar1)
+)
+
+  newdat <- expand.grid(
+    AHM=c(17.5,23.44,27.54)
+    , Family=levels(clean_data$Family),
+     W17Height = 0
+)
+  newdat$W17Height <- predict(m3,newdat,re.form=NA)
+  mm <- model.matrix(terms(m3),newdat)
+  pvar1 <- diag(mm %*% tcrossprod(vcov(m3),mm))
+  tvar1 <- pvar1+VarCorr(m3)$Population[1] # As population is ranef
+  
+  cmult <- 1.96 
+newdat <- data.frame(
+    newdat
+    , plo = newdat$W17Height-cmult*sqrt(pvar1)
+    , phi = newdat$W17Height+cmult*sqrt(pvar1)
+    , tlo = newdat$W17Height-cmult*sqrt(tvar1)
+    , thi = newdat$W17Height+cmult*sqrt(tvar1)
+)
+
+    
+# With CI based on the fixed effect uncertainty and random effect variance
+## CC families only
+    F3 <- newdat %>%
+      filter(Family == "CR10" | Family == "CR2" | Family =="CR3" | Family == "CR4" | Family == "CR5" | Family == "CR6" | Family == "CR7" | Family == "CR9") %>% 
+    ggplot(aes(x=AHM, y=W17Height, color=Family))+
+    geom_point()+
+    stat_smooth(method="lm") +
+    ylim(0,30) +
+    geom_pointrange(aes(ymin = tlo, ymax = thi)) +
+    scale_x_continuous(limits=c(16,30),breaks=c(17.5,23.44,27.54), labels=c("17.5", "23.4", "27.5")) +
+    facet_wrap(~Family) +
+    theme(legend.position="none") +
+    labs(title="Figure 3: CI based on fixed effects and random effect variance")
+    
+    
+    F4 <- newdat1 %>%
+      filter(Family == "CR10" | Family == "CR2" | Family =="CR3" | Family == "CR4" | Family == "CR5" | Family == "CR6" | Family == "CR7" | Family == "CR9") %>% 
+    ggplot(aes(x=PPT_wt, y=W17Height, color=Family))+
+    geom_point()+
+    stat_smooth(method="lm") +
+    ylim(0,30) +
+    geom_pointrange(aes(ymin = tlo, ymax = thi)) +
+     scale_x_continuous(limits=c(175,350),breaks=c(182.4,218.9,342), labels=c("182.4", "218.9", "342")) +
+    facet_wrap(~Family) +
+    theme(legend.position="none") +
+    labs(title="Figure 4: CI based on fixed effects and random effect variance")
+```
+  
+# Results
+
+
+Figure 1 and Figure 2 show the values for AHM and PPT_wt for the CR population families. CR4 has the smallest p-value for the interaction term in the regression model for AHM and PPT_wt (p = 0.09) (loess line shown not regression line). 
+
+```{r, fig.height=4, fig.width=6}
+
+F1
+
+F2
+```
+
+
+Figure 3 shows the fitted regression lines for AHM for the CR population and Figure 4 shows the values for PPT_wt.
+
+```{r, fig.height=4, fig.width=6}
+F3
+
+F4
+```
+
+Figure 5 compares the reaction norms of CR4 for AHM and PPT_wt. Note that these plots are flipped as the reaction norm depends just on the order of the sites as they align with the climate variables
+
+```{r, fig.height=4, fig.width=8}
+
+grid.arrange(F5a, F5b, ncol = 2)
+
+
+```
+
+Figure 6 and Figure 7 show the relationship between AHM and PPT_wt for Population with a loess line fitted. The BE population has the smallest p-value for the interaction term with AHM (p = 0.07) and PPT_wt (0.09).
+
+```{r, fig.height=8, fig.width=6}
+
+F6
+
+F7
+```
+
+Figure 8 compares the reaction norms between AHM and PPT_wt for the BE Population - again note similarities due to planting site and climate variables being colinear.
+
+``````{r, fig.height=4, fig.width=8}
+
+grid.arrange(F8a, F8b, ncol = 2)
+```
+
+Table 1 shows the regression coefficients for AHM  and table 2 shows the coefficients  for PPT_wt.
+
+```{r}
+
+
+kable(summary(m3)$coef, caption="Table 1: Full results for regression model of Family and AHM on height", digits=2)
+
+kable(summary(m3a)$coef, caption="Table 2: Full results for regression model of Family and PPT_wt on height", digits=2)
+
+```
+
+Table 3 shows the regression co-efficients for the effect of population on AHM and of population on PPT_wt in table 4.
+
+```{r}
+
+kable(summary(m4)$coef, caption="Table 3: Full results for regression model of Population and AHM on height", digits=2)
+
+kable(summary(m5)$coef, caption="Table 4: Full results for regression model of Population and PPT_wt on height", digits=2)
+
+```
+
