@@ -176,6 +176,17 @@ mean_diffs3 %>%
   xlab("Mean difference between trial and provenance sites")+
   ggtitle("Height ~ standardised variables with large variation between trial and prov sites")
 
+### similar to plot richard produced? use his code to reproduct plot with my climate data
+psySum = psy %>%
+  tidyr::pivot_longer(cols = x:VAPPressure)%>%
+  group_by(Population, PlantingSite, name, value)%>%
+  summarise(mn_ht = mean(na.omit(W17Height)))
+
+ggplot(psySum, aes(value, mn_ht, colour = PlantingSite))+
+  geom_point()+geom_smooth()+facet_wrap(~name, scales = "free")+
+  theme_bw()+theme(legend.position = "bottom")+
+  geom_smooth(data = psySum, aes(x = value, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
+
 ### lattice 
 library(lattice)
 histogram(~H,data=sp)
