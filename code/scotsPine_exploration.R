@@ -61,7 +61,7 @@ sp2 <- sp %>% mutate(MATdiff = MAT_P-MAT_T,
 head(sp2[,c(56:73)])
 
 # mean height per provenance within each trial site
-mean_H<-aggregate(H~Trial:Provenance,sp2,FUN=mean)
+#mean_H<-aggregate(H~Trial:Provenance,sp2,FUN=mean)
 #sp2<-na.omit(sp2)
 
 # all variables from PC1 of Richard's thesis
