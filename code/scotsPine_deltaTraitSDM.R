@@ -534,18 +534,17 @@ sp <- sp %>% mutate(block=factor(Trial:Block),
                     popSite=factor(Trial:Provenance),
                     famSite=factor(Trial:Family))
 head(sp)
+colnames(sp)[1]<-"H"
 
 ## overall summary - variation among populations...
-ggplot(sp, aes(reorder(Provenance, W17Height), W17Height, group = Provenance))+
+ggplot(sp, aes(reorder(Provenance, H), H, group = Provenance))+
   geom_violin()+
   facet_wrap(~Trial)
 
 ## spatial effect in trial?
-ggplot(sp, aes(row, column, fill = W17Height))+
+ggplot(sp, aes(row, column, fill = H))+
   geom_tile(colour = "grey55")+theme_void()+
   facet_wrap(~Trial)+scale_fill_viridis_c()
-
-colnames(sp)[1]<-"H"
 
 # boxplots
 boxplot(sp$H2 ~ sp$Trial)
@@ -814,6 +813,7 @@ Pinus$TD_cut<-cut(Pinus$TD_P, seq(10,20,5))
 summary(Pinus$TD_cut)
 dotchart(Pinus$W17Height,groups = factor(Pinus$TD_cut),color = Pinus$Trial, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by trial')
 dotchart(Pinus$W17Height,groups = factor(Pinus$TD_cut),color = Pinus$Provenance, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by provenance')
+
 
 ##################
 # 08/04/20
