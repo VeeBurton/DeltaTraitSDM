@@ -1,5 +1,5 @@
 ####----UTF simulation  ---->>>> each simulation will generate a different output
-wd<-'/home/maurizio/Documents/UK_climate/'
+#wd<-'/home/maurizio/Documents/UK_climate/'
 #wd<-'/media/maurizio/mauHD/GIS_generali/ClimateEU_generated/UK_only/'
 
 ##---loading raster map for spatialization
