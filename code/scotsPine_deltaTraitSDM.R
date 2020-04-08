@@ -815,3 +815,42 @@ summary(Pinus$TD_cut)
 dotchart(Pinus$W17Height,groups = factor(Pinus$TD_cut),color = Pinus$Trial, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by trial')
 dotchart(Pinus$W17Height,groups = factor(Pinus$TD_cut),color = Pinus$Provenance, ylab='FFP (grouped)', xlab = 'Height', main='Coloured by provenance')
 
+##################
+# 08/04/20
+# new variables to try post scotsPine_exploration.R
+##################
+sp <- read.csv("./Scots_pine/Scots_pine_H.csv") # raw data
+sp$X <- NULL
+str(sp)
+colnames(sp)[11]<-"H"
+sp3 <- read.csv("./Scots_pine/Scots_pine_H_cent_scal_allvars.csv") # 
+sp3$X <- NULL
+str(sp3)
+colnames(sp3)[1]<-"H"
+sp<-na.omit(sp)
+sp3$Hraw <- sp$H
+sp3$Trial <- sp$Trial
+sp3$Provenance <- sp$Provenance
+sp3$Block <- sp$Block
+
+sp3 <- sp3 %>% mutate(block=factor(Trial:Block),
+                      popSite=factor(Trial:Provenance))
+
+# dredge for all possible combinations
+require(MuMIn)
+options(na.action = "na.fail") # change the default "na.omit" to prevent models from being fitted to different datasets in case of missing values.
+
+globalmodel <- lmer(log(Hraw) ~ PAS_T + PAS_P + NFFD_T + NFFD_T + CMD_T + CMD_P + DD0_T + DD0_P + DD_18_T + DD_18_P +
+                      eFFP_T + eFFP_P + Eref_T + Eref_P + FFP_T + FFP_P + MAP_T + MAP_P + MSP_T + MSP_P +
+                      (1|popSite) + (1|block),
+                    data = sp3)
+summary(globalmodel)
+
+combinations <- dredge(globalmodel)
+print(combinations)
+coefs <- coefTable(combinations)
+coefTable(combinations)[1]
+
+combinations<- combinations[order(combinations$AICc),]
+models <- get.models(combinations, subset=TRUE)
+
