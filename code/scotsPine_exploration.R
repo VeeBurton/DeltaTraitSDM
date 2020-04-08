@@ -36,6 +36,15 @@ a<-agricolae::duncan.test(m,trt="x")
 plot(a) # this suggests there are significant differences between provenance at trial sites
 head(a)
 
+# try with other variables
+y<-sp$bFFP_P
+x<-paste(sp$Provenance,sp$Trial,sep='_')
+m<-lm(y~x) # model of height by trial:provenance
+summary(m)
+anova(m)
+b<-agricolae::duncan.test(m,trt="x")
+plot(b) # this suggests there are significant differences between provenance at trial sites
+head(b)
 
 ##################
 
