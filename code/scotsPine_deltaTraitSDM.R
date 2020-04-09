@@ -744,7 +744,7 @@ models <- get.models(combinations, subset=TRUE)
 
 pcaMOD1<-lmer(log(H2) ~ DD_18_T + FFP_T + (1|popSite) + (1|block),data = sp)
 pcaMOD2<-lmer(log(H2) ~ bFFP_P + DD_18_T + FFP_T + (1|popSite) + (1|block),data = sp)
-
+model_performance(pcamod1)
 check_model(PCAmodel)
 check_model(pcaMOD2)
 
@@ -867,6 +867,7 @@ colnames(sp3)[41] <- 'EMT_T'
 pca1_combos <- lmer(log(Hraw) ~ DD_18_T + bFFP_T + Eref_T + CMD_T + FFP_T + NFFD_T + EMT_T +
                       (1|Trial:Provenance),
                     data=sp3)
+summary(pca)
 combinations <- dredge(pca1_combos) 
 #print(combinations)
 coefs <- coefTable(combinations)
@@ -876,6 +877,9 @@ combinations<- combinations[order(combinations$AICc),]
 models <- get.models(combinations, subset=TRUE)
 
 pcamod1 <-  lmer(log(Hraw) ~ DD_18_T + NFFD_T + (1|Trial:Provenance), data=sp3)
+summary(pcamod1)
+model_performance(pcamod1)
+
 pcamod2 <-  lmer(log(Hraw) ~ DD_18_T + EMT_T + (1|Trial:Provenance), data=sp3)
 
 check_model(pcamod2)
