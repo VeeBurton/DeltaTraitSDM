@@ -840,17 +840,45 @@ sp3 <- sp3 %>% mutate(block=factor(Trial:Block),
 require(MuMIn)
 options(na.action = "na.fail") # change the default "na.omit" to prevent models from being fitted to different datasets in case of missing values.
 
-globalmodel <- lmer(log(Hraw) ~ PAS_T + PAS_P + NFFD_T + NFFD_T + CMD_T + CMD_P + DD0_T + DD0_P + DD_18_T + DD_18_P +
-                      eFFP_T + eFFP_P + Eref_T + Eref_P + FFP_T + FFP_P + MAP_T + MAP_P + MSP_T + MSP_P +
+#allcombos <- lmer(log(Hraw) ~ PAS_T + PAS_P + NFFD_T + NFFD_T + CMD_T + CMD_P + DD0_T + DD0_P + DD_18_T + DD_18_P +
+                      #eFFP_T + eFFP_P + Eref_T + Eref_P + FFP_T + FFP_P + MAP_T + MAP_P + MSP_T + MSP_P +
+                      #(1|popSite) + (1|block),
+                    #data = sp3)
+#summary(allcombos)
+
+#combinations <- dredge(allcombos) # this took over 24 hrs and was still running/hanging
+
+allcombos2 <- lmer(log(Hraw) ~ PAS_T*PAS_P + TD_T*TD_P + MWMT_T*MWMT_P +
                       (1|popSite) + (1|block),
                     data = sp3)
-summary(globalmodel)
+summary(allcombos2)
 
-combinations <- dredge(globalmodel)
-print(combinations)
+combinations <- dredge(allcombos2) 
+#print(combinations)
 coefs <- coefTable(combinations)
 coefTable(combinations)[1]
 
 combinations<- combinations[order(combinations$AICc),]
 models <- get.models(combinations, subset=TRUE)
 
+colnames(sp3)[22] <- 'EMT_P'
+colnames(sp3)[41] <- 'EMT_T'
+
+pca1_combos <- lmer(log(Hraw) ~ DD_18_T + bFFP_T + Eref_T + CMD_T + FFP_T + NFFD_T + EMT_T +
+                      (1|Trial:Provenance),
+                    data=sp3)
+combinations <- dredge(pca1_combos) 
+#print(combinations)
+coefs <- coefTable(combinations)
+coefTable(combinations)[1]
+
+combinations<- combinations[order(combinations$AICc),]
+models <- get.models(combinations, subset=TRUE)
+
+pcamod1 <-  lmer(log(Hraw) ~ DD_18_T + NFFD_T + (1|Trial:Provenance), data=sp3)
+pcamod2 <-  lmer(log(Hraw) ~ DD_18_T + EMT_T + (1|Trial:Provenance), data=sp3)
+
+check_model(pcamod2)
+
+compare_performance(pcamod1,pcamod2, rank = TRUE)
+plot(compare_performance(pcamod1,pcamod2, rank = TRUE))
