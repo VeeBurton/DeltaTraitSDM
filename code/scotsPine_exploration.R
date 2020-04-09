@@ -254,7 +254,7 @@ head(sp7)
 ggplot(sp7, aes(mn_diff, mn_ht, colour = `Trial:Provenance`))+
   geom_point()+geom_smooth()+facet_wrap(~variable, scales = "free")+
   theme_bw()+theme(legend.position = "right")+
-  geom_smooth(data = sp7, aes(x = mn_diff, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
+  geom_smooth(data = sp7, aes(x = mn_diff, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = T)
 
 ### lattice 
 library(lattice)
@@ -305,6 +305,7 @@ prov.lm <- lm(Hraw ~ Trial:Provenance, data = sp3)
 tidy(prov.lm)
 # as a random effect
 mixed.lmer <- lmer(Hraw ~ DD_18_T + (1|Trial/Provenance), data = sp3)
+summary(mixed.lmer)
 tidy(mixed.lmer)
 plot(mixed.lmer) 
 qqnorm(resid(mixed.lmer))
