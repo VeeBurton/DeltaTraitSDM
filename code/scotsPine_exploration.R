@@ -46,6 +46,15 @@ b<-agricolae::duncan.test(m,trt="x")
 plot(b) # this suggests there are significant differences between provenance at trial sites
 head(b)
 
+y<-sp$CMD_P
+x<-paste(sp$Provenance,sp$Trial,sep='_')
+m<-lm(y~x) # model of height by trial:provenance
+summary(m)
+anova(m)
+c<-agricolae::duncan.test(m,trt="x")
+plot(c) # this suggests there are significant differences between provenance at trial sites
+head(c)
+
 ##################
 
 sp2 <- sp %>% mutate(MATdiff = MAT_P-MAT_T,
@@ -186,15 +195,66 @@ mean_diffs3 %>%
   ggtitle("Height ~ standardised variables with large variation between trial and prov sites")
 
 ### similar to plot richard produced? use his code to reproduct plot with my climate data
-psySum = psy %>%
-  tidyr::pivot_longer(cols = x:VAPPressure)%>%
-  group_by(Population, PlantingSite, name, value)%>%
-  summarise(mn_ht = mean(na.omit(W17Height)))
+#psySum = psy %>%
+  #tidyr::pivot_longer(cols = x:VAPPressure)%>%
+  #group_by(Population, PlantingSite, name, value)%>%
+  #summarise(mn_ht = mean(na.omit(W17Height)))
 
-ggplot(psySum, aes(value, mn_ht, colour = PlantingSite))+
-  geom_point()+geom_smooth()+facet_wrap(~name, scales = "free")+
+head(sp)
+sp4 <- sp %>% 
+  gather(key = 'variable', value = 'value', -Trial, -Provenance, -id, -Tag, -Block, -Row,
+         -Column, -Seed.Zone, -Family, -Seedling, -H, -ID1, -Latitude, -Longitude, -Elevation) %>% 
+  group_by(Provenance,Trial,variable,value) %>% 
+  summarise(mn_ht = mean(na.omit(H)))
+head(sp4)
+
+ggplot(sp4, aes(value, mn_ht, colour = Trial))+
+  geom_point()+geom_smooth()+facet_wrap(~variable, scales = "free")+
   theme_bw()+theme(legend.position = "bottom")+
-  geom_smooth(data = psySum, aes(x = value, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
+  geom_smooth(data = sp4, aes(x = value, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
+
+# repeat for standardised variables
+head(sp3)
+sp5 <- sp3[,-c(47:64)] %>% 
+  gather(key = 'variable', value = 'st_value',  -H, -Latitude, -Longitude, -Elevation, -Hraw,
+         -Trial, -Provenance) %>% 
+  group_by(Provenance,Trial,variable,st_value) %>% 
+  summarise(mn_ht = mean(na.omit(Hraw)))
+head(sp5)
+
+ggplot(sp5, aes(st_value, mn_ht, colour = Trial))+
+  geom_point()+geom_smooth()+facet_wrap(~variable, scales = "free")+
+  theme_bw()+theme(legend.position = "bottom")+
+  geom_smooth(data = sp5, aes(x = st_value, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
+
+# do by trial:prov
+head(sp3)
+sp6 <- sp3[,-c(47:64)] %>% 
+  gather(key = 'variable', value = 'st_value',  -H, -Latitude, -Longitude, -Elevation, -Hraw,
+         -Trial, -Provenance) %>% 
+  group_by(Trial:Provenance,variable,st_value) %>% 
+  summarise(mn_ht = mean(na.omit(Hraw)))
+head(sp6)
+
+ggplot(sp6, aes(st_value, mn_ht, colour = `Trial:Provenance`))+
+  geom_point()+geom_smooth()+facet_wrap(~variable, scales = "free")+
+  theme_bw()+theme(legend.position = "right")+
+  geom_smooth(data = sp6, aes(x = st_value, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
+
+# by trial:prov and mean difference
+head(sp3)
+sp7 <- sp3[,-c(5:43)] %>% 
+  gather(key = 'variable', value = 'st_diff',  -H, -Latitude, -Longitude, -Elevation, -Hraw,
+         -Trial, -Provenance) %>% 
+  group_by(Trial:Provenance,variable) %>% 
+  summarise(mn_ht = mean(na.omit(Hraw)),
+            mn_diff = mean(st_diff))
+head(sp7)
+
+ggplot(sp7, aes(mn_diff, mn_ht, colour = `Trial:Provenance`))+
+  geom_point()+geom_smooth()+facet_wrap(~variable, scales = "free")+
+  theme_bw()+theme(legend.position = "right")+
+  geom_smooth(data = sp7, aes(x = mn_diff, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
 
 ### lattice 
 library(lattice)
