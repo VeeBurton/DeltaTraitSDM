@@ -59,6 +59,13 @@ colnames(sp)[22]<-'EMT_P'
 colnames(sp)[41]<-'EMT_T'
 rm(sp.raw)
 
+# double chack nesting
+sp %>% 
+  ggplot(aes(Trial:Block:Provenance,Hraw, colour=Trial))+geom_boxplot()+
+  theme_minimal()+
+  ylab("Height (mm)")+
+  theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1))
+
 # models to compare
 pair.mod1 <- lmer(Hraw ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
 pair.mod2 <- lmer(log(Hraw) ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
