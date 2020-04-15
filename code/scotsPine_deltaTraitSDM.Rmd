@@ -1,0 +1,220 @@
+---
+title: "Applying the deltaTraitSDM to a multi-site provenance trial of native Scots pine (pinus sylvestris)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# load libraries
+library(tidyverse)
+library(ggplot2)
+library(lme4)
+library(nlme)
+library(MuMIn)
+library(raster)
+library(rgdal)
+library(rworldmap)
+library(sjPlot) 
+library(corrplot)
+library(caret)
+library(performance)
+library(kableExtra)
+```
+
+## Most important variables highlighted by analysis so far
+
+According to pairplots:
+
+  - MWMT_T
+  - PAS_T 
+  - TD_T
+  - DD0_T 
+  - MCMT_T
+  - eFFP_T
+  - Eref_T
+  - EMT_T 
+  - DD18_T
+  - NFFD_T
+  
+According to PCA:
+
+  - DD_18_T
+  - FFP_T
+  - bFFP_P
+  - FFP_P
+  - TD_P
+  
+According to exploration/difference between trial & provenance:
+
+  - PAS
+  - TD
+  - MWMT
+  - DD0
+  - MCMT
+  
+```{r data, include=FALSE}
+
+# read in standardised data (with raw height)
+sp.raw <- read.csv("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/Scots_pine_H.csv") # raw data
+sp.raw$X <- NULL
+str(sp.raw)
+sp.raw<-na.omit(sp.raw)
+sp <- read.csv("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/Scots_pine_H_cent_scal_allvars.csv") # 
+sp$X <- NULL
+str(sp)
+colnames(sp)[1]<-"Hscal"
+sp$Hraw <- sp.raw$W17Height
+sp$Trial <- sp.raw$Trial
+sp$Provenance <- sp.raw$Provenance
+sp$Block <- sp.raw$Block
+colnames(sp)[22]<-'EMT_P'
+colnames(sp)[41]<-'EMT_T'
+rm(sp.raw)
+
+```
+
+The data is nested Trial/Block/Provenance.
+
+```{r boxplot, include=TRUE, echo=FALSE}
+# double check nesting
+sp %>% 
+  ggplot(aes(Trial:Block:Provenance,Hraw, colour=Trial))+geom_boxplot()+
+  theme_minimal()+
+  ylab("Height (mm)")+
+  theme(axis.text.x = element_blank()) #element_text(size=6,angle = 90, hjust = 1))
+```
+
+## Initial models to try
+
+## Compare model performance
+
+```{r model-performance, include=TRUE, echo=FALSE}
+
+# models
+pair.mod1 <- lmer(Hraw ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
+pair.mod2 <- lmer(log(Hraw) ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
+pair.mod3 <- lmer(log(Hraw) ~ TD_T + Eref_T + (1|Trial/Block/Provenance), data=sp)
+pca.mod1 <- lmer(log(Hraw) ~ DD_18_T + FFP_P + (1|Trial/Block/Provenance), data=sp)
+pca.mod2 <- lmer(log(Hraw) ~ DD_18_T + TD_P + (1|Trial/Block/Provenance), data=sp)
+pca.mod3 <- lmer(log(Hraw) ~ FFP_T + TD_P + (1|Trial/Block/Provenance), data=sp)
+diff.mod1 <- lmer(log(Hraw) ~ PAS_P + TD_T + (1|Trial/Block/Provenance), data=sp)
+diff.mod2 <- lmer(log(Hraw) ~ MWMT_P + MCMT_T + (1|Trial/Block/Provenance), data=sp)
+diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + (1|Trial/Block/Provenance), data=sp)
+init.compare <- compare_performance(pair.mod1,pair.mod2,pair.mod3,pca.mod1,pca.mod2,pca.mod3,diff.mod1,diff.mod2,diff.mod3, rank = TRUE)
+knitr::kable(head(init.compare[,1:9],9), booktabs=TRUE,
+             caption = "Comparison of initial model indices") %>% 
+  kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
+#r2(diff.mod3)$R2_marginal
+#icc(diff.mod3)
+#check_model(diff.mod3)
+
+# "best models" from dredge
+dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_T + (1|Trial/Block/Provenance),data = sp)
+dredge2<-lmer(log(Hraw) ~ DD_18_T + NFFD_T + PAS_T + (1|Trial/Block/Provenance),data = sp)
+dredge3<-lmer(log(Hraw) ~ DD_18_T + NFFD_T + TD_T + (1|Trial/Block/Provenance),data = sp)
+dredge.compare <- compare_performance(diff.mod3,pair.mod3,pair.mod2,dredge1,dredge2,dredge3, rank = TRUE)
+knitr::kable(head(dredge.compare[,1:8],6), booktabs=TRUE,
+             caption = "Comparison of dredge model indices") %>% 
+  kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
+
+# from richard's thesis
+whittet.mod1 <- lmer(log(Hraw) ~ MAP_T + FFP_P + (1|Trial/Block/Provenance), data = sp)
+whittet.mod2 <- lmer(log(Hraw) ~ MAP_P + FFP_T  + (1|Trial/Block/Provenance), data = sp)
+whittet.mod3 <- lmer(log(Hraw) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + (1|Trial/Block/Provenance), data = sp)
+
+
+compare.best <- compare_performance(dredge1,diff.mod3,pair.mod3,pair.mod2,whittet.mod1,whittet.mod2,whittet.mod3, rank=TRUE)
+knitr::kable(head(compare.best[,1:9],7), booktabs=TRUE,
+             caption = "Comparison of 'best' model indices") %>% 
+  kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
+
+plot(compare.best)
+#write.csv(compare.best, './Scots_pine/compare_performance.csv')
+
+```
+## Cross-validation
+
+```{r cross-validation, include=FALSE}
+# run on training and test datasets
+#results<-NULL
+
+#for(i in 1:1000) {
+  
+  #i<-1
+  #rows<-sample(x=1:nrow(sp),size=round(nrow(sp)*0.25,1))
+  #training<-sp[-rows,]
+  #testing<-sp[rows,]
+  
+  #dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_T + (1|Trial/Block/Provenance),data = training)
+  #pair.mod3 <- lmer(log(Hraw) ~ TD_T + Eref_T + (1|Trial/Block/Provenance), data=training)
+  #diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + (1|Trial/Block/Provenance), data=training)
+  #pair.mod2 <- lmer(log(Hraw) ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=training)
+  #whittet.mod2 <- lmer(log(Hraw) ~ MAP_P + FFP_T  + (1|Trial/Block/Provenance), data = training)
+  
+  #p.dr1<-predict(dredge1,testing)-log(testing$Hraw)
+  #p.pr3<-predict(pair.mod2,testing)-log(testing$Hraw)
+  #p.df3<-predict(diff.mod3,testing)-log(testing$Hraw)
+  #p.pr2<-predict(pair.mod2,testing)-log(testing$Hraw)
+  #p.wh2<-predict(whittet.mod2,testing)-log(testing$Hraw)
+  
+  #results<-rbind(results,data.frame(Run=rep(i,5),Model=c('dredge1','pair.mod3','diff.mod3','pair.mod2','whittet.mod2'),
+                                    #MAE=c(mean(abs(p.dr1)),mean(abs(p.pr3)),mean(abs(p.df3)),mean(abs(p.pr2)),mean(abs(p.wh2))),
+                                    #R2marg=c(r2(dredge1)$R2_marginal, r2(pair.mod3)$R2_marginal, r2(diff.mod3)$R2_marginal,
+                                             #r2(pair.mod2)$R2_marginal,r2(whittet.mod2)$R2_marginal)))
+  
+#}
+
+#write.csv(results, './Scots_pine/cross-validation_results.csv')
+
+```
+
+The results of the cross validation indicate that...
+
+```{r cv-results, include=T, echo=FALSE}
+results<-read.csv("~/Documents/R/DeltaTraitSDM/Scots_pine/cross-validation_results.csv")
+summary(results)
+hist(results$MAE,breaks=50)
+hist(results$R2marg,breaks=50)
+
+results %>% 
+  ggplot(aes(Model,MAE, colour=Model))+geom_boxplot()+
+  theme_minimal()+
+  ylab("MAE")+
+  theme(axis.text.x = element_blank())
+
+results %>% 
+  ggplot(aes(Model,R2marg, colour=Model))+geom_boxplot()+
+  theme_minimal()+
+  ylab("R2marg")+
+  theme(axis.text.x = element_blank())
+
+resAVE<-aggregate(MAE~Model,results,FUN=mean)
+resAVE<-resAVE[order(resAVE[,2],decreasing=F),]
+
+```
+
+## DeltaTraitSDM
+
+```{r DTSDM, include=TRUE, echo=FALSE}
+
+# current distribution of scots pine
+PinusDistr <- shapefile("~/Documents/R/DeltaTraitSDM/Scots_pine/Pinus_sylvestris/Pinus_sylvestris_EUFORGEN.shp") 
+# load Europe
+library("rworldmap")
+worldmap <- getMap(resolution = "high")
+europe <- worldmap[which(worldmap$REGION=="Europe"),] 
+europe <- worldmap[which(grepl("Europe", worldmap$GEO3) & as.character(worldmap$NAME) != "Russia"),]               
+plot(europe, xlim = c(-25, 50), ylim = c(35, 71), asp = 1)
+
+# raster stack of climate variables
+#DD18 <- raster()
+#NFFD <- raster()
+#rsmax <- stack(ST_H, DD18, NFFD)
+
+#predict height
+#predH <- predict(rsmax, dredge1, re.form=NA, type='response')
+#predH<- exp(predH)
+#plot(predH, main="Tree height predicted")
+
+```
+
