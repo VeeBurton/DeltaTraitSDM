@@ -171,7 +171,7 @@ plot(compare.best)
 The results of the cross validation indicate that...
 
 ```{r cv-results, include=T, echo=FALSE}
-results<-read.csv("~/Documents/R/DeltaTraitSDM/Scots_pine/cross-validation_results.csv")
+results<-read.csv("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/cross-validation_results.csv")
 summary(results)
 hist(results$MAE,breaks=50)
 hist(results$R2marg,breaks=50)
@@ -198,7 +198,7 @@ resAVE<-resAVE[order(resAVE[,2],decreasing=F),]
 ```{r DTSDM, include=TRUE, echo=FALSE}
 
 # current distribution of scots pine
-PinusDistr <- shapefile("~/Documents/R/DeltaTraitSDM/Scots_pine/Pinus_sylvestris/Pinus_sylvestris_EUFORGEN.shp") 
+#PinusDistr <- shapefile("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/Pinus_sylvestris/Pinus_sylvestris_EUFORGEN.shp") 
 # load Europe
 library("rworldmap")
 worldmap <- getMap(resolution = "high")
