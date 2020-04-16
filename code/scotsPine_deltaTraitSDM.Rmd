@@ -8,6 +8,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
 # load libraries
 library(tidyverse)
 library(ggplot2)
@@ -101,7 +102,7 @@ A number of models combining the 'important' variables have been produced (see c
 ## Compare model performance
 
 ```{r model-performance, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
-
+knitr::opts_chunk$set(message = FALSE)
 # initial models
 pair.mod1 <- lmer(Hraw ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
 pair.mod2 <- lmer(log(Hraw) ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
