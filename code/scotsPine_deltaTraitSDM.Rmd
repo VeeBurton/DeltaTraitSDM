@@ -69,7 +69,7 @@ sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data
 sp.raw$X <- NULL
 str(sp.raw)
 sp.raw<-na.omit(sp.raw)
-sp <- read.csv(paste(wd,"Scots_pine/Scots_pine_H_cent_scal_allvars.csv")) # 
+sp <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H_cent_scal_allvars.csv")) # 
 sp$X <- NULL
 str(sp)
 colnames(sp)[1]<-"Hscal"
@@ -100,7 +100,7 @@ A number of models combining the 'important' variables have been produced (see c
 
 ## Compare model performance
 
-```{r model-performance, include=TRUE, echo=FALSE, message='hide', warning='hide'}
+```{r model-performance, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 
 # initial models
 pair.mod1 <- lmer(Hraw ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
@@ -221,12 +221,19 @@ colnames(demDF) <- c('x','y','elev')
 # export for Arc to get coordinates
 write.csv(demDF, paste0(wd,"climate_surfaces/UKdem1k_df.csv"), row.names = FALSE, quote = FALSE)
 # read back in reprojected data (WGS84) with lat long (features::get xy coordinates)
-coords <- read.dbf(paste0(wd,"climate_surfaces/dem1k_reproj.dbf"))
+#coords <- read.dbf(paste0(wd,"climate_surfaces/dem1k_reproj.dbf"))
 # correct format
 
 # export for climateEU
-write.csv(coords, paste0(wd,"climate_surfaces/for-climateEU.csv"))
+#write.csv(coords, paste0(wd,"climate_surfaces/for-climateEU.csv"))
 
+# read in climate data
+#climate <- read.csv()
+#coordinates(climate) <- X + Y
+#gridded(climate) <- TRUE
+#summary(climate)
+#DD18 <- raster(climate,layer='DD18')
+#etc.
 ```
 
 
