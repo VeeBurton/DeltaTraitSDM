@@ -1,6 +1,9 @@
 ---
-title: "Applying the deltaTraitSDM to a multi-site provenance trial of native Scots pine (pinus sylvestris)"
-output: html_document
+title: "Applying the ΔTraitSDM to a multi-site provenance trial of native Scots pine (_Pinus sylvestris_)"
+output: 
+  prettydoc::html_pretty:
+    theme: architect
+    
 ---
 
 ```{r setup, include=FALSE}
@@ -23,6 +26,8 @@ library(kableExtra)
 
 ## Most important variables highlighted by analysis so far
 
+A number of strategies have been applied to explore the data and try to uncover the climate variables which may be explanatory for height.
+
 According to pairplots:
 
   - MWMT_T
@@ -33,7 +38,7 @@ According to pairplots:
   - eFFP_T
   - Eref_T
   - EMT_T 
-  - DD18_T
+  - DD_18_T
   - NFFD_T
   
 According to PCA:
@@ -51,6 +56,8 @@ According to exploration/difference between trial & provenance:
   - MWMT
   - DD0
   - MCMT
+  
+So more generally, the factors driving height may be: *snow cover*, *temperature extremes* (warmest and coldest month temperatures, degree days below 0), *frost free period* and when this begins/ends, and temperature difference between coldest and warmest temperatures (*continentality*).
   
 ```{r data, include=FALSE}
 
@@ -73,7 +80,7 @@ rm(sp.raw)
 
 ```
 
-The data is nested Trial/Block/Provenance.
+The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates that there is variation in height between trials, and also within trials according to provenance. So there is value in fitting a mixed-effects model to explore height, with the random effects structure taking account of the different trials and provenances.
 
 ```{r boxplot, include=TRUE, echo=FALSE}
 # double check nesting
@@ -86,11 +93,13 @@ sp %>%
 
 ## Initial models to try
 
+A number of models combining the 'important' variables have been produced (see code chunk below).
+
 ## Compare model performance
 
-```{r model-performance, include=TRUE, echo=FALSE}
+```{r model-performance, include=TRUE, echo=FALSE, message='hide', warning='hide'}
 
-# models
+# initial models
 pair.mod1 <- lmer(Hraw ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
 pair.mod2 <- lmer(log(Hraw) ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
 pair.mod3 <- lmer(log(Hraw) ~ TD_T + Eref_T + (1|Trial/Block/Provenance), data=sp)
@@ -133,6 +142,8 @@ plot(compare.best)
 
 ```
 ## Cross-validation
+
+Using the five 'best' models from the comparisons above, cross-validation was carried out.
 
 ```{r cross-validation, include=FALSE}
 # run on training and test datasets
