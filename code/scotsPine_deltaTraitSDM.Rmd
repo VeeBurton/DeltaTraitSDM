@@ -22,6 +22,9 @@ library(corrplot)
 library(caret)
 library(performance)
 library(kableExtra)
+
+wd<-"C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/"
+
 ```
 
 ## Most important variables highlighted by analysis so far
@@ -62,11 +65,11 @@ So more generally, the factors driving height may be: *snow cover*, *temperature
 ```{r data, include=FALSE}
 
 # read in standardised data (with raw height)
-sp.raw <- read.csv("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/Scots_pine_H.csv") # raw data
+sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data
 sp.raw$X <- NULL
 str(sp.raw)
 sp.raw<-na.omit(sp.raw)
-sp <- read.csv("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/Scots_pine_H_cent_scal_allvars.csv") # 
+sp <- read.csv(paste(wd,"Scots_pine/Scots_pine_H_cent_scal_allvars.csv")) # 
 sp$X <- NULL
 str(sp)
 colnames(sp)[1]<-"Hscal"
@@ -138,7 +141,7 @@ knitr::kable(head(compare.best[,1:9],7), booktabs=TRUE,
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
 
 plot(compare.best)
-#write.csv(compare.best, './Scots_pine/compare_performance.csv')
+#write.csv(compare.best, paste0(wd,'/Scots_pine/compare_performance.csv'))
 
 ```
 ## Cross-validation
@@ -175,14 +178,14 @@ Using the five 'best' models from the comparisons above, cross-validation was ca
   
 #}
 
-#write.csv(results, './Scots_pine/cross-validation_results.csv')
+#write.csv(results, paste0(wd,'Scots_pine/cross-validation_results.csv'))
 
 ```
 
 The results of the cross validation indicate that...
 
 ```{r cv-results, include=T, echo=FALSE}
-results<-read.csv("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/cross-validation_results.csv")
+results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results.csv'))
 summary(results)
 hist(results$MAE,breaks=50)
 hist(results$R2marg,breaks=50)
@@ -205,6 +208,23 @@ resAVE<-resAVE[order(resAVE[,2],decreasing=F),]
 ```
 
 ## DeltaTraitSDM
+
+```{r climate-surfaces, include=FALSE, echo=FALSE}
+
+library(foreign)
+dem <- raster(paste0(wd,'/climate_surfaces/UKdem1k.tif'))
+# convert to dataframe x,y,elev
+demDF <- as.data.frame(dem,xy=TRUE)
+head(demDF)
+colnames(demDF) <- c('x','y','elev')
+write.csv(demDF, paste0(wd,"climate_surfaces/UKdem1k_df.csv"), row.names = FALSE, quote = FALSE)
+
+# export to Arc to get coordinates
+# export to climateEU
+
+
+```
+
 
 ```{r DTSDM, include=TRUE, echo=FALSE}
 
