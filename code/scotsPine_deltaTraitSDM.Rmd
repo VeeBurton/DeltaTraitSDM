@@ -144,6 +144,7 @@ plot(compare.best)
 #write.csv(compare.best, paste0(wd,'/Scots_pine/compare_performance.csv'))
 
 ```
+
 ## Cross-validation
 
 Using the five 'best' models from the comparisons above, cross-validation was carried out.
@@ -217,11 +218,14 @@ dem <- raster(paste0(wd,'/climate_surfaces/UKdem1k.tif'))
 demDF <- as.data.frame(dem,xy=TRUE)
 head(demDF)
 colnames(demDF) <- c('x','y','elev')
+# export for Arc to get coordinates
 write.csv(demDF, paste0(wd,"climate_surfaces/UKdem1k_df.csv"), row.names = FALSE, quote = FALSE)
+# read back in reprojected data (WGS84) with lat long (features::get xy coordinates)
+coords <- read.dbf(paste0(wd,"climate_surfaces/dem1k_reproj.dbf"))
+# correct format
 
-# export to Arc to get coordinates
-# export to climateEU
-
+# export for climateEU
+write.csv(coords, paste0(wd,"climate_surfaces/for-climateEU.csv"))
 
 ```
 
