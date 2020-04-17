@@ -221,12 +221,25 @@ head(demDF)
 colnames(demDF) <- c('x','y','elev')
 # export for Arc to get coordinates
 write.csv(demDF, paste0(wd,"climate_surfaces/UKdem1k_df.csv"), row.names = FALSE, quote = FALSE)
-# read back in reprojected data (WGS84) with lat long (features::get xy coordinates)
-#coords <- read.dbf(paste0(wd,"climate_surfaces/dem1k_reproj.dbf"))
+# read back in reprojected data (WGS84) with lat long (data management::features::get xy coordinates)
+coords <- read.dbf(paste0(wd,"climate_surfaces/dem1k_reproj.dbf"))
+head(coords)
+summary(coords)
+coords$elev<-as.numeric(as.character(coords$elev))
+summary(coords)
+coords<-na.omit(coords)
+#coords<-filter(coords, elev!=1080)
 # correct format
+coords <- coords[,c(1,2,5,4,3)]
+colnames(coords) <- c("id1","id2","lat","long","elev")
+head(coords)
+histogram(coords$elev)
+#check
+ggplot(coords)+
+  geom_point(aes(long,lat,col=elev))
 
 # export for climateEU
-#write.csv(coords, paste0(wd,"climate_surfaces/for-climateEU.csv"))
+write.csv(coords, paste0(wd,"climate_surfaces/for-climateEU.csv"))
 
 # read in climate data
 #climate <- read.csv()
