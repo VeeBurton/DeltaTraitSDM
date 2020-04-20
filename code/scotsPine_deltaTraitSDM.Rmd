@@ -255,8 +255,19 @@ gridded(climate) <- TRUE
 #summary(climate)
 DD_18 <- raster(climate,layer='DD_18')
 plot(DD_18)
+summary(climate$DD_18)
 NFFD <- raster(climate,layer='NFFD')
 plot(NFFD)
+
+# check climate data (are variables correct?)
+ climate<-st_as_sf(climate)
+ summary(climate$DD_18)
+ summary(climate$DD18)
+ 
+ climate %>% filter(lat>55) %>% 
+   ggplot()+
+   geom_point(aes(long,lat,fill=DD18))
+ 
 ```
 
 
