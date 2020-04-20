@@ -242,12 +242,21 @@ ggplot(coords)+
 write.csv(coords, paste0(wd,"climate_surfaces/for-climateEU.csv"))
 
 # read in climate data
-#climate <- read.csv()
-#coordinates(climate) <- X + Y
-#gridded(climate) <- TRUE
+climate <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Normal_1961_1990Y.csv"))
+head(climate)
+colnames(climate)<-c('x','y','lat','long','elev','MAT','MWMT','MCMT','TD','MAP','MSP','AHM','SHM','DD0','DD5','DD_18','DD18','NFFD','bFFP','eFFP','FFP','PAS','EMT','Eref','CMD')
+climate[climate=="-9999"]<-NA
 #summary(climate)
-#DD18 <- raster(climate,layer='DD18')
-#etc.
+climate <- na.omit(climate)
+#ggplot(climate)+geom_point(aes(x,y))
+library(raster)
+coordinates(climate) <- ~ x + y
+gridded(climate) <- TRUE
+#summary(climate)
+DD_18 <- raster(climate,layer='DD_18')
+plot(DD_18)
+NFFD <- raster(climate,layer='NFFD')
+plot(NFFD)
 ```
 
 
@@ -258,19 +267,61 @@ write.csv(coords, paste0(wd,"climate_surfaces/for-climateEU.csv"))
 # load Europe
 library("rworldmap")
 worldmap <- getMap(resolution = "high")
-europe <- worldmap[which(worldmap$REGION=="Europe"),] 
-europe <- worldmap[which(grepl("Europe", worldmap$GEO3) & as.character(worldmap$NAME) != "Russia"),]               
-plot(europe, xlim = c(-25, 50), ylim = c(35, 71), asp = 1)
+summary(worldmap)
+unique(worldmap$SOVEREIGNT)
+unique(worldmap$GEO3)
+UK <- worldmap[which(worldmap$SOVEREIGNT=="United Kingdom" & worldmap$GEO3=="Western Europe" & worldmap$LAT>50),] 
+UK <- shapefile(paste0(wd,"Scots_pine/european_region_region.shp"))
+plot(UK)
+crs(UK) 
 
 # raster stack of climate variables
-#DD18 <- raster()
-#NFFD <- raster()
-#rsmax <- stack(ST_H, DD18, NFFD)
+ST_H <- DD_18
+mean(sp$Hraw) #  stand age?
+values(ST_H) <- 125.9 # assign mean height to raster of same extent?
+plot(ST_H)
+rsmax <- stack(ST_H, DD_18, NFFD)
+names(rsmax)=c("Hraw","DD_18_T","NFFD_T")
+names(rsmax)
 
 #predict height
-#predH <- predict(rsmax, dredge1, re.form=NA, type='response')
-#predH<- exp(predH)
-#plot(predH, main="Tree height predicted")
+predH <- predict(rsmax, dredge1, re.form=NA, type='response')
+predH<- log(predH)
+plot(predH, main="Tree height predicted")
+
+crs(predH)<- "+init=epsg:27700" # british national grid
+
+tm_shape(predH) +
+  tm_style("beaver")+
+  tm_raster(palette="PuBuGn",style = 'pretty', title = "Tree height predicted") +
+  tm_legend(outside = TRUE)+
+  tm_shape(UK)+
+  tm_borders(lwd=1)
+
+# mask with current distribution
+#### Mask
+nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
+summary(nwss)
+library(sf)
+nwss<-st_as_sf(nwss)
+unique(nwss$DOM_HABITA)
+nativePine<-nwss%>%filter(DOM_HABITA=="Native pinewood")
+plot(st_geometry(nativePine))
+predDist<- mask(predH, nativePine)
+plot(predDist, main="Tree height prediction within current Scots pine distribution")
+crs(predDist) 
+#plot(UK,add=TRUE)
+
+crs(UK)
+
+library(tmap)
+
+tm_shape(predDist) +
+  tm_style("beaver")+
+  tm_raster(palette="PuBuGn",style = 'pretty', title = "Tree height predicted within current distribution") +
+  tm_legend(outside = TRUE)+
+  tm_shape(UK)+
+  tm_borders(lwd=1)
 
 ```
 
