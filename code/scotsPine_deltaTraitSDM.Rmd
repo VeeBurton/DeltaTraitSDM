@@ -258,13 +258,16 @@ plot(DD_18)
 summary(climate$DD_18)
 NFFD <- raster(climate,layer='NFFD')
 plot(NFFD)
+MAP <- raster(climate,layer='MAP')
+FFP <- raster(climate,layer='FFP')
 
 # check climate data (are variables correct?)
- climate<-st_as_sf(climate)
- summary(climate$DD_18)
- summary(climate$DD18)
+library(sf)
+climateSF<-st_as_sf(climate)
+summary(climateSF$DD_18)
+summary(climateSF$DD18)
  
- climate %>% filter(lat>55) %>% 
+climateSF %>% filter(lat>55) %>% 
    ggplot()+
    geom_point(aes(long,lat,fill=DD18))
  
@@ -276,12 +279,12 @@ plot(NFFD)
 # current distribution of scots pine
 #PinusDistr <- shapefile("file:///C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/Scots_pine/Pinus_sylvestris/Pinus_sylvestris_EUFORGEN.shp") 
 # load Europe
-library("rworldmap")
-worldmap <- getMap(resolution = "high")
-summary(worldmap)
-unique(worldmap$SOVEREIGNT)
-unique(worldmap$GEO3)
-UK <- worldmap[which(worldmap$SOVEREIGNT=="United Kingdom" & worldmap$GEO3=="Western Europe" & worldmap$LAT>50),] 
+#library("rworldmap")
+#worldmap <- getMap(resolution = "high")
+#summary(worldmap)
+#unique(worldmap$SOVEREIGNT)
+#unique(worldmap$GEO3)
+#UK <- worldmap[which(worldmap$SOVEREIGNT=="United Kingdom" & worldmap$GEO3=="Western Europe" & worldmap$LAT>50),] 
 UK <- shapefile(paste0(wd,"Scots_pine/european_region_region.shp"))
 plot(UK)
 crs(UK) 
@@ -291,17 +294,18 @@ ST_H <- DD_18
 mean(sp$Hraw) #  stand age?
 values(ST_H) <- 125.9 # assign mean height to raster of same extent?
 plot(ST_H)
-rsmax <- stack(ST_H, DD_18, NFFD)
-names(rsmax)=c("Hraw","DD_18_T","NFFD_T")
+rsmax <- stack(ST_H, MAP, FFP) #stack(ST_H, DD_18, NFFD)
+names(rsmax)= c("Hraw","MAP_P","FFP_T")#c("Hraw","DD_18_T","NFFD_T")
 names(rsmax)
 
 #predict height
-predH <- predict(rsmax, dredge1, re.form=NA, type='response')
+predH <- predict(rsmax, whittet.mod2, re.form=NA, type='response') #dredge1
 predH<- log(predH)
 plot(predH, main="Tree height predicted")
 
 crs(predH)<- "+init=epsg:27700" # british national grid
 
+library(tmap)
 tm_shape(predH) +
   tm_style("beaver")+
   tm_raster(palette="PuBuGn",style = 'pretty', title = "Tree height predicted") +
@@ -313,19 +317,14 @@ tm_shape(predH) +
 #### Mask
 nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
 summary(nwss)
-library(sf)
 nwss<-st_as_sf(nwss)
-unique(nwss$DOM_HABITA)
+#unique(nwss$DOM_HABITA)
 nativePine<-nwss%>%filter(DOM_HABITA=="Native pinewood")
-plot(st_geometry(nativePine))
+#plot(st_geometry(nativePine))
 predDist<- mask(predH, nativePine)
-plot(predDist, main="Tree height prediction within current Scots pine distribution")
-crs(predDist) 
+#plot(predDist, main="Tree height prediction within current Scots pine distribution")
+#crs(predDist) 
 #plot(UK,add=TRUE)
-
-crs(UK)
-
-library(tmap)
 
 tm_shape(predDist) +
   tm_style("beaver")+
