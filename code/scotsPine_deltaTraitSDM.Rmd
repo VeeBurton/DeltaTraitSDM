@@ -108,16 +108,15 @@ A number of models combining the 'important' variables have been produced (see c
 ```{r model-performance, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(message = FALSE)
 # initial models
-pair.mod1 <- lmer(Hraw ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
-pair.mod2 <- lmer(log(Hraw) ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=sp)
-pair.mod3 <- lmer(log(Hraw) ~ TD_T + Eref_T + (1|Trial/Block/Provenance), data=sp)
-pca.mod1 <- lmer(log(Hraw) ~ DD_18_T + FFP_P + (1|Trial/Block/Provenance), data=sp)
-pca.mod2 <- lmer(log(Hraw) ~ DD_18_T + TD_P + (1|Trial/Block/Provenance), data=sp)
-pca.mod3 <- lmer(log(Hraw) ~ FFP_T + TD_P + (1|Trial/Block/Provenance), data=sp)
-diff.mod1 <- lmer(log(Hraw) ~ PAS_P + TD_T + (1|Trial/Block/Provenance), data=sp)
-diff.mod2 <- lmer(log(Hraw) ~ MWMT_P + MCMT_T + (1|Trial/Block/Provenance), data=sp)
-diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + (1|Trial/Block/Provenance), data=sp)
-dmod3.int <- lmer(log(Hraw) ~ DD0_P + PAS_T + DD0_P*PAS_T + (1|Trial/Block/Provenance), data=sp)
+pair.mod1 <- lmer(Hraw ~ MWMT_T + PAS_P + MWMT_T*PAS_P + (1|Trial/Block/Provenance), data=sp)
+pair.mod2 <- lmer(log(Hraw) ~ MWMT_P + PAS_T + MWMT_P*PAS_T + (1|Trial/Block/Provenance), data=sp)
+pair.mod3 <- lmer(log(Hraw) ~ TD_P + Eref_T + TD_P*Eref_T + (1|Trial/Block/Provenance), data=sp)
+pca.mod1 <- lmer(log(Hraw) ~ DD_18_T + FFP_P + DD_18_T*FFP_P + (1|Trial/Block/Provenance), data=sp)
+pca.mod2 <- lmer(log(Hraw) ~ DD_18_T + TD_P + DD_18_T*TD_P + (1|Trial/Block/Provenance), data=sp)
+pca.mod3 <- lmer(log(Hraw) ~ FFP_T + TD_P + FFP_T*TD_P + (1|Trial/Block/Provenance), data=sp)
+diff.mod1 <- lmer(log(Hraw) ~ PAS_P + TD_T + PAS_P*TD_T + (1|Trial/Block/Provenance), data=sp)
+diff.mod2 <- lmer(log(Hraw) ~ MWMT_P + MCMT_T + MWMT_P*MCMT_T + (1|Trial/Block/Provenance), data=sp)
+diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + DD0_P*PAS_T + (1|Trial/Block/Provenance), data=sp)
 init.compare <- compare_performance(pair.mod1,pair.mod2,pair.mod3,pca.mod1,pca.mod2,pca.mod3,diff.mod1,diff.mod2,diff.mod3,dmod3.int, rank = TRUE)
 knitr::kable(head(init.compare[,1:9],10), booktabs=TRUE,
              caption = "Comparison of initial model indices") %>% 
