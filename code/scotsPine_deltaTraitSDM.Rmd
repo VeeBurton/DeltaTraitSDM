@@ -117,8 +117,8 @@ pca.mod3 <- lmer(log(Hraw) ~ FFP_T + TD_P + FFP_T*TD_P + (1|Trial/Block/Provenan
 diff.mod1 <- lmer(log(Hraw) ~ PAS_P + TD_T + PAS_P*TD_T + (1|Trial/Block/Provenance), data=sp)
 diff.mod2 <- lmer(log(Hraw) ~ MWMT_P + MCMT_T + MWMT_P*MCMT_T + (1|Trial/Block/Provenance), data=sp)
 diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + DD0_P*PAS_T + (1|Trial/Block/Provenance), data=sp)
-init.compare <- compare_performance(pair.mod1,pair.mod2,pair.mod3,pca.mod1,pca.mod2,pca.mod3,diff.mod1,diff.mod2,diff.mod3,dmod3.int, rank = TRUE)
-knitr::kable(head(init.compare[,1:9],10), booktabs=TRUE,
+init.compare <- compare_performance(pair.mod1,pair.mod2,pair.mod3,pca.mod1,pca.mod2,pca.mod3,diff.mod1,diff.mod2,diff.mod3, rank = TRUE)
+knitr::kable(head(init.compare[,1:8],10), booktabs=TRUE,
              caption = "Comparison of initial model indices") %>% 
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
 #r2(diff.mod3)$R2_marginal
@@ -126,18 +126,18 @@ knitr::kable(head(init.compare[,1:9],10), booktabs=TRUE,
 #check_model(diff.mod3)
 
 # "best models" from dredge
-dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_T + (1|Trial/Block/Provenance),data = sp)
-dredge2<-lmer(log(Hraw) ~ DD_18_T + NFFD_T + PAS_T + (1|Trial/Block/Provenance),data = sp)
-dredge3<-lmer(log(Hraw) ~ DD_18_T + NFFD_T + TD_T + (1|Trial/Block/Provenance),data = sp)
+dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + DD_18_T*NFFD_P + (1|Trial/Block/Provenance),data = sp)
+dredge2<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + PAS_T + DD_18_T*NFFD_P + NFFD_P*PAS_T (1|Trial/Block/Provenance),data = sp)
+dredge3<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + TD_T + DD_18_T*NFFD_P + NFFD_P*TD_T+ (1|Trial/Block/Provenance),data = sp)
 dredge.compare <- compare_performance(diff.mod3,pair.mod3,pair.mod2,dredge1,dredge2,dredge3, rank = TRUE)
 knitr::kable(head(dredge.compare[,1:8],6), booktabs=TRUE,
              caption = "Comparison of dredge model indices") %>% 
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
 
 # from richard's thesis
-whittet.mod1 <- lmer(log(Hraw) ~ MAP_T + FFP_P + (1|Trial/Block/Provenance), data = sp)
-whittet.mod2 <- lmer(log(Hraw) ~ MAP_P + FFP_T  + (1|Trial/Block/Provenance), data = sp)
-whittet.mod3 <- lmer(log(Hraw) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + (1|Trial/Block/Provenance), data = sp)
+whittet.mod1 <- lmer(log(Hraw) ~ MAP_T + FFP_P + MAP_T*FFP_P + (1|Trial/Block/Provenance), data = sp)
+whittet.mod2 <- lmer(log(Hraw) ~ MAP_P + FFP_T + MAP_P*FFP_T + (1|Trial/Block/Provenance), data = sp)
+whittet.mod3 <- lmer(log(Hraw) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + DD5_T*MWMT_P + (1|Trial/Block/Provenance), data = sp)
 
 
 compare.best <- compare_performance(dredge1,diff.mod3,dmod3.int,pair.mod3,pair.mod2,whittet.mod1,whittet.mod2,whittet.mod3, rank=TRUE)
