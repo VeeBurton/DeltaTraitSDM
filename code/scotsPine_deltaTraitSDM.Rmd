@@ -127,10 +127,10 @@ knitr::kable(head(init.compare[,1:8],10), booktabs=TRUE,
 
 # "best models" from dredge
 dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + DD_18_T*NFFD_P + (1|Trial/Block/Provenance),data = sp)
-dredge2<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + PAS_T + DD_18_T*NFFD_P + NFFD_P*PAS_T (1|Trial/Block/Provenance),data = sp)
-dredge3<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + TD_T + DD_18_T*NFFD_P + NFFD_P*TD_T+ (1|Trial/Block/Provenance),data = sp)
-dredge.compare <- compare_performance(diff.mod3,pair.mod3,pair.mod2,dredge1,dredge2,dredge3, rank = TRUE)
-knitr::kable(head(dredge.compare[,1:8],6), booktabs=TRUE,
+dredge2<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + PAS_T + DD_18_T*NFFD_P + NFFD_P*PAS_T + (1|Trial/Block/Provenance),data = sp)
+#dredge3<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + TD_T + DD_18_T*NFFD_P + NFFD_P*TD_T+ (1|Trial/Block/Provenance),data = sp)
+dredge.compare <- compare_performance(diff.mod3,pair.mod3,pair.mod2,dredge1,dredge2, rank = TRUE)
+knitr::kable(head(dredge.compare[,1:8],5), booktabs=TRUE,
              caption = "Comparison of dredge model indices") %>% 
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
 
@@ -140,8 +140,8 @@ whittet.mod2 <- lmer(log(Hraw) ~ MAP_P + FFP_T + MAP_P*FFP_T + (1|Trial/Block/Pr
 whittet.mod3 <- lmer(log(Hraw) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + DD5_T*MWMT_P + (1|Trial/Block/Provenance), data = sp)
 
 
-compare.best <- compare_performance(dredge1,diff.mod3,dmod3.int,pair.mod3,pair.mod2,whittet.mod1,whittet.mod2,whittet.mod3, rank=TRUE)
-knitr::kable(head(compare.best[,1:9],9), booktabs=TRUE,
+compare.best <- compare_performance(dredge1,diff.mod3,pair.mod3,pair.mod2,whittet.mod1,whittet.mod2,whittet.mod3, rank=TRUE)
+knitr::kable(head(compare.best[,1:9],8), booktabs=TRUE,
              caption = "Comparison of 'best' model indices") %>% 
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
 
