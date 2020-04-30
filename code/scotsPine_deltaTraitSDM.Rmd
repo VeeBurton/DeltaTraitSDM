@@ -156,35 +156,38 @@ Using the five 'best' models from the comparisons above, cross-validation was ca
 
 ```{r cross-validation, include=FALSE}
 # run on training and test datasets
-#results<-NULL
+results<-NULL
 
-#for(i in 1:1000) {
+for(i in 1:1000) {
   
   #i<-1
-  #rows<-sample(x=1:nrow(sp),size=round(nrow(sp)*0.25,1))
-  #training<-sp[-rows,]
-  #testing<-sp[rows,]
+  rows<-sample(x=1:nrow(sp),size=round(nrow(sp)*0.25,1))
+  training<-sp[-rows,]
+  testing<-sp[rows,]
   
-  #dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_T + (1|Trial/Block/Provenance),data = training)
-  #pair.mod3 <- lmer(log(Hraw) ~ TD_T + Eref_T + (1|Trial/Block/Provenance), data=training)
-  #diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + (1|Trial/Block/Provenance), data=training)
-  #pair.mod2 <- lmer(log(Hraw) ~ MWMT_T + PAS_T + (1|Trial/Block/Provenance), data=training)
-  #whittet.mod2 <- lmer(log(Hraw) ~ MAP_P + FFP_T  + (1|Trial/Block/Provenance), data = training)
-  
-  #p.dr1<-predict(dredge1,testing)-log(testing$Hraw)
-  #p.pr3<-predict(pair.mod2,testing)-log(testing$Hraw)
-  #p.df3<-predict(diff.mod3,testing)-log(testing$Hraw)
-  #p.pr2<-predict(pair.mod2,testing)-log(testing$Hraw)
-  #p.wh2<-predict(whittet.mod2,testing)-log(testing$Hraw)
-  
-  #results<-rbind(results,data.frame(Run=rep(i,5),Model=c('dredge1','pair.mod3','diff.mod3','pair.mod2','whittet.mod2'),
-   #                                 MAE=c(mean(abs(p.dr1)),mean(abs(p.pr3)),mean(abs(p.df3)),mean(abs(p.pr2)),mean(abs(p.wh2))),
-  #                                  R2marg=c(r2(dredge1)$R2_marginal, r2(pair.mod3)$R2_marginal, r2(diff.mod3)$R2_marginal,
-  #                                           r2(pair.mod2)$R2_marginal,r2(whittet.mod2)$R2_marginal)))
-  
-#}
+  whittet.mod1 <- lmer(log(Hraw) ~ MAP_T + FFP_P + MAP_T*FFP_P + (1|Trial/Block/Provenance), data = training)
+  dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + DD_18_T*NFFD_P + (1|Trial/Block/Provenance),data = training)
+  diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + DD0_P*PAS_T + (1|Trial/Block/Provenance), data = training)
+  pair.mod2 <- lmer(log(Hraw) ~ MWMT_P + PAS_T + MWMT_P*PAS_T + (1|Trial/Block/Provenance), data = training)
+  whittet.mod3 <- lmer(log(Hraw) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + DD5_T*MWMT_P + 
+                         (1|Trial/Block/Provenance), data = training)
 
-#write.csv(results, paste0(wd,'Scots_pine/cross-validation_results.csv'))
+  p.wh1<-predict(whittet.mod1,testing)-log(testing$Hraw)
+  p.d1<-predict(dredge1,testing)-log(testing$Hraw)
+  p.df3<-predict(diff.mod3,testing)-log(testing$Hraw)
+  p.pr2<-predict(pair.mod2,testing)-log(testing$Hraw)
+  p.wh3<-predict(whittet.mod3,testing)-log(testing$Hraw)
+  
+  results<-rbind(results,data.frame(
+    Run=rep(i,5),
+    Model=c('whittet1','dredge1','diff.mod3','pair.mod2','whittet.mod3'),
+    MAE=c(mean(abs(p.wh1)),mean(abs(p.d1)),mean(abs(p.df3)),mean(abs(p.pr2)),mean(abs(p.wh3))),
+    R2marg=c(r2(whittet.mod1)$R2_marginal, r2(dredge1)$R2_marginal,r2(diff.mod3)$R2_marginal,
+             r2(pair.mod2)$R2_marginal,r2(whittet.mod3)$R2_marginal)))
+  
+}
+
+write.csv(results, paste0(wd,'Scots_pine/cross-validation_results_interactions.csv'))
 
 ```
 
