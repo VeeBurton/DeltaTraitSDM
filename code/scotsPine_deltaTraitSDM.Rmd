@@ -146,7 +146,7 @@ knitr::kable(head(compare.best[,1:9],8), booktabs=TRUE,
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
 
 plot(compare.best)
-#write.csv(compare.best, paste0(wd,'/Scots_pine/compare_performance.csv'))
+write.csv(compare.best, paste0(wd,'/Scots_pine/compare_performance_interactions.csv'))
 
 ```
 
@@ -260,23 +260,25 @@ library(raster)
 coordinates(climate) <- ~ x + y
 gridded(climate) <- TRUE
 #summary(climate)
-DD_18 <- raster(climate,layer='DD_18')
-plot(DD_18,main="DD < 18")
-summary(climate$DD_18)
-NFFD <- raster(climate,layer='NFFD')
-plot(NFFD, main="NFFD")
+#DD_18 <- raster(climate,layer='DD_18')
+#plot(DD_18,main="DD < 18")
+#summary(climate$DD_18)
+#NFFD <- raster(climate,layer='NFFD')
+#plot(NFFD, main="NFFD")
 MAP <- raster(climate,layer='MAP')
 plot(MAP,main="MAP")
 FFP <- raster(climate,layer='FFP')
 plot(FFP,main="FFP")
-TD <- raster(climate,layer='TD')
-plot(TD,main="TD")
-Eref <- raster(climate, layer='Eref')
-plot(Eref,main="Eref")
-DD0 <- raster(climate,layer="DD0")
-plot(DD0,main="DD0")
+#TD <- raster(climate,layer='TD')
+#plot(TD,main="TD")
+#Eref <- raster(climate, layer='Eref')
+#plot(Eref,main="Eref")
+#DD0 <- raster(climate,layer="DD0")
+#plot(DD0,main="DD0")
 PAS <- raster(climate,layer="PAS")
 plot(PAS,main="PAS")
+MWMT <- raster(climate,layer='MWMT')
+plot(MWMT,main='MWMT')
 ```
 
 
@@ -296,18 +298,30 @@ plot(UK)
 crs(UK) 
 
 # raster stack of climate variables
-ST_H <- DD_18
+ST_H <- MAP
 mean(sp$Hraw) #  stand age?
 values(ST_H) <- 126 # assign mean height to raster of same extent?
 plot(ST_H)
-rsmax <- stack(ST_H, DD0, PAS) #stack(ST_H, MAP, FFP) #stack(ST_H, DD_18, NFFD)
-names(rsmax)= c("Hraw","DD0_P","PAS_T")#c("Hraw","DD_18_T","NFFD_T")
+#whittet.mod1 <- lmer(log(Hraw) ~ MAP_T + FFP_P + MAP_T*FFP_P + (1|Trial/Block/Provenance), data = training)
+#rsmax <- stack(ST_H, MAP, FFP) 
+#names(rsmax)= c("Hraw","MAP_T","FFP_P")
+#names(rsmax)
+#plot(rsmax)
+pair.mod2 <- lmer(log(Hraw) ~ MWMT_P + PAS_T + MWMT_P*PAS_T + (1|Trial/Block/Provenance), data=sp)
+rsmax <- stack(ST_H, MWMT, PAS) 
+names(rsmax)= c("Hraw","MWMT_P","PAS_T")
 names(rsmax)
 plot(rsmax)
 
 #predict height
-predH <- predict(rsmax, diff.mod3, re.form=NA, type='response') #whittet.mod2 #dredge1
-predH<- log(predH)
+#whittet.mod1 <- lmer(log(Hraw) ~ MAP_T + FFP_P + MAP_T*FFP_P + (1|Trial/Block/Provenance),data=sp)
+#predH <- predict(rsmax, whittet.mod1, re.form=NA, type='response') 
+#predH<- exp(predH)
+#plot(predH, main="Tree height predicted")
+
+pair.mod2 <- lmer(log(Hraw) ~ MWMT_P + PAS_T + MWMT_P*PAS_T + (1|Trial/Block/Provenance), data=sp)
+predH <- predict(rsmax, pair.mod2, re.form=NA, type='response') #whittet.mod2 #dredge1
+#predH<- exp(predH)
 plot(predH, main="Tree height predicted")
 
 crs(predH)<- "+init=epsg:27700" # british national grid
@@ -318,6 +332,15 @@ tm_shape(predH) +
   tm_legend(outside = TRUE)+
   tm_shape(UK)+
   tm_borders(lwd=1)
+
+# esc baseline
+esc <- raster(paste0(wd,"Scots_pine/sp_esc_yc_gb_cont_0_7_min.tif"))
+plot(esc)
+crs(esc)
+crs(esc)<- "+init=epsg:27700" # british national grid
+# mask using esc
+predDist<- mask(predH, esc)
+plot(predDist)
 
 # mask with current distribution
 #### Mask
