@@ -17,6 +17,8 @@ sp.raw<-na.omit(sp.raw)
 # check data for input to climateEU
 cEUinput <- read.csv(paste0(wd,"climate_surfaces/for-climateEU.csv"))
 head(cEUinput)
+ggplot(cEUinput)+
+  geom_point(aes(long,lat))
 
 # use 30 yr average rasters first
 climate <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Normal_1961_1990Y.csv"))
