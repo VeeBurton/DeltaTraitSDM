@@ -84,7 +84,7 @@ sp$Provenance <- sp.raw$Provenance
 sp$Block <- sp.raw$Block
 colnames(sp)[22]<-'EMT_P'
 colnames(sp)[41]<-'EMT_T'
-rm(sp.raw)
+#rm(sp.raw)
 
 ```
 
