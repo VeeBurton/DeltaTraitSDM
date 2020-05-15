@@ -27,12 +27,16 @@ library(sf)
 library(raster)
 library(foreign)
 library(tmap)
+library(magick)
 
 wd<-"C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/"
 
 ```
 
-## Most important variables highlighted by analysis so far
+This file documents the process of finding the most important climate variables which may be influencing native Scots pine height across Scotland.
+It shows the testing of a number of mixed-effects models, their comparison, and their implementation within a ΔTraitSDM framework to predict current and future distribution of the trait of interest.
+
+## Climate variables driving height
 
 A number of strategies have been applied to explore the data and try to uncover the climate variables which may be explanatory for height.
 
@@ -65,18 +69,18 @@ According to exploration/difference between trial & provenance:
   - DD0
   - MCMT
   
-So more generally, the factors driving height may be: *snow cover*, *temperature extremes* (warmest and coldest month temperatures, degree days below 0), *frost free period* and when this begins/ends, and temperature difference between coldest and warmest temperatures (*continentality*).
+So more generally, the factors driving height may be: *degree days below 18*, *precipitation as snow*, *temperature extremes* (warmest and coldest month temperatures, degree days below 0), *frost free period* and when this begins/ends, and temperature difference between coldest and warmest temperatures (*continentality*).
   
-```{r data, include=FALSE}
+```{r data, include=FALSE, echo=FALSE}
 
 # read in standardised data (with raw height)
 sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data
 sp.raw$X <- NULL
-str(sp.raw)
+#str(sp.raw)
 sp.raw<-na.omit(sp.raw)
 sp <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H_cent_scal_allvars.csv")) # 
 sp$X <- NULL
-str(sp)
+#str(sp)
 colnames(sp)[1]<-"Hscal"
 sp$Hraw <- sp.raw$W17Height
 sp$Trial <- sp.raw$Trial
@@ -90,7 +94,7 @@ colnames(sp)[41]<-'EMT_T'
 
 The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates that there is variation in height between trials, and also within trials according to provenance. So there is value in fitting a mixed-effects model to explore height, with the random effects structure taking account of the different trials and provenances.
 
-```{r boxplot, include=TRUE, echo=FALSE}
+```{r boxplot, include=TRUE, echo=FALSE, fig.cap="Boxplot showing the variation in height at each trial site, split by block and provenance"}
 # double check nesting
 sp %>% 
   ggplot(aes(Trial:Block:Provenance,Hraw, colour=Trial))+geom_boxplot()+
@@ -101,52 +105,49 @@ sp %>%
 
 ## Initial models to try
 
-A number of models combining the 'important' variables have been produced (see code chunk below).
+A number of models combining the potentially 'important' variables highlighted above have been produced (see code chunk below).
+These were compared via a number of indices(Figure \@ref(fig:model-performance)).
 
 ## Compare model performance
 
-```{r model-performance, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(message = FALSE)
+```{r model-performance, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="A comparison plot of several models"}
+
 # initial models
-pair.mod1 <- lmer(Hraw ~ MWMT_T + PAS_P + MWMT_T*PAS_P + (1|Trial/Block/Provenance), data=sp)
-pair.mod2 <- lmer(log(Hraw) ~ MWMT_P + PAS_T + MWMT_P*PAS_T + (1|Trial/Block/Provenance), data=sp)
-pair.mod3 <- lmer(log(Hraw) ~ TD_P + Eref_T + TD_P*Eref_T + (1|Trial/Block/Provenance), data=sp)
-pca.mod1 <- lmer(log(Hraw) ~ DD_18_T + FFP_P + DD_18_T*FFP_P + (1|Trial/Block/Provenance), data=sp)
-pca.mod2 <- lmer(log(Hraw) ~ DD_18_T + TD_P + DD_18_T*TD_P + (1|Trial/Block/Provenance), data=sp)
-pca.mod3 <- lmer(log(Hraw) ~ FFP_T + TD_P + FFP_T*TD_P + (1|Trial/Block/Provenance), data=sp)
-diff.mod1 <- lmer(log(Hraw) ~ PAS_P + TD_T + PAS_P*TD_T + (1|Trial/Block/Provenance), data=sp)
-diff.mod2 <- lmer(log(Hraw) ~ MWMT_P + MCMT_T + MWMT_P*MCMT_T + (1|Trial/Block/Provenance), data=sp)
-diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + DD0_P*PAS_T + (1|Trial/Block/Provenance), data=sp)
-init.compare <- compare_performance(pair.mod1,pair.mod2,pair.mod3,pca.mod1,pca.mod2,pca.mod3,diff.mod1,diff.mod2,diff.mod3, rank = TRUE)
-knitr::kable(head(init.compare[,1:8],10), booktabs=TRUE,
-             caption = "Comparison of initial model indices") %>% 
-  kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
-#r2(diff.mod3)$R2_marginal
-#icc(diff.mod3)
-#check_model(diff.mod3)
-
-# "best models" from dredge
-dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + DD_18_T*NFFD_P + (1|Trial/Block/Provenance),data = sp)
-dredge2<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + PAS_T + DD_18_T*NFFD_P + NFFD_P*PAS_T + (1|Trial/Block/Provenance),data = sp)
-#dredge3<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + TD_T + DD_18_T*NFFD_P + NFFD_P*TD_T+ (1|Trial/Block/Provenance),data = sp)
-dredge.compare <- compare_performance(diff.mod3,pair.mod3,pair.mod2,dredge1,dredge2, rank = TRUE)
-knitr::kable(head(dredge.compare[,1:8],5), booktabs=TRUE,
-             caption = "Comparison of dredge model indices") %>% 
-  kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
-
+#pair.mod1 <- lmer(W17Height ~ scale(MWMT_T) + scale(PAS_P) + scale(MWMT_T)*scale(PAS_P) + (1|Trial/Block/Provenance), data=sp.raw)
+#pair.mod2 <- lmer(log(W17Height) ~ scale(MWMT_P) + scale(PAS_T) + scale(MWMT_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=sp.raw)
+#pair.mod3 <- lmer(log(W17Height) ~ scale(TD_P) + scale(Eref_T) + scale(TD_P)*scale(Eref_T) + (1|Trial/Block/Provenance), data=sp.raw)
+#pca.mod1 <- lmer(log(W17Height) ~ scale(DD_18_T) + scale(FFP_P) + scale(DD_18_T)*scale(FFP_P) + (1|Trial/Block/Provenance), data=sp.raw)
+#pca.mod2 <- lmer(log(W17Height) ~ scale(DD_18_T) + scale(TD_P) + scale(DD_18_T)*scale(TD_P) + (1|Trial/Block/Provenance), data=sp.raw)
+#pca.mod3 <- lmer(log(W17Height) ~ scale(FFP_T) + scale(TD_P) + scale(FFP_T)*scale(TD_P) + (1|Trial/Block/Provenance), data=sp.raw)
+#diff.mod1 <- lmer(log(W17Height) ~ scale(PAS_P) + TD_T + scale(PAS_P)*TD_T + (1|Trial/Block/Provenance), data=sp.raw)
+#diff.mod2 <- lmer(log(W17Height) ~ scale(MWMT_P) + scale(MCMT_T) + scale(MWMT_P)*scale(MCMT_T) + (1|Trial/Block/Provenance), data=sp.raw)
+#diff.mod3 <- lmer(log(W17Height) ~ scale(DD0_P) + scale(PAS_T) + scale(DD0_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=sp.raw)
+# "best models" from dredge )
+#dredge1<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(DD_18_T)*NFFD_P + (1|Trial/Block/Provenance),data = sp.raw)
+#dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
+#dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
 # from richard's thesis
-whittet.mod1 <- lmer(log(Hraw) ~ MAP_T + FFP_P + MAP_T*FFP_P + (1|Trial/Block/Provenance), data = sp)
-whittet.mod2 <- lmer(log(Hraw) ~ MAP_P + FFP_T + MAP_P*FFP_T + (1|Trial/Block/Provenance), data = sp)
-whittet.mod3 <- lmer(log(Hraw) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + DD5_T*MWMT_P + (1|Trial/Block/Provenance), data = sp)
+#whittet.mod1 <- lmer(log(W17Height) ~ scale(MAP_T) + scale(FFP_P) + scale(MAP_T)*scale(FFP_P) + (1|Trial/Block/Provenance), data = sp.raw)
+#whittet.mod2 <- lmer(log(W17Height) ~ scale(MAP_P) + scale(FFP_T) + scale(MAP_P)*scale(FFP_T) + (1|Trial/Block/Provenance), data = sp.raw)
+#whittet.mod3 <- lmer(log(W17Height) ~ scale(DD5_T) + scale(MWMT_P) + scale(MCMT_T) + scale(MAP_T) + scale(TD_P) + scale(DD5_T)*scale(MWMT_P) + (1|Trial/Block/Provenance), data = sp.raw)
 
+#compare.mods <- compare_performance(pair.mod1, pair.mod2,pair.mod3,
+                                    #pca.mod1,pca.mod2,pca.mod3,
+                                    #diff.mod1,diff.mod2,diff.mod3,
+                                    #dredge1,dredge2,dredge3,
+                                    #whittet.mod1,whittet.mod2,whittet.mod3,
+                                    #rank=TRUE)
 
-compare.best <- compare_performance(dredge1,diff.mod3,pair.mod3,pair.mod2,whittet.mod1,whittet.mod2,whittet.mod3, rank=TRUE)
-knitr::kable(head(compare.best[,1:9],8), booktabs=TRUE,
+#plot(compare.mods)
+
+#write.csv(compare.mods, paste0(wd,'/Scots_pine/compare_performance_interactions2.csv'))
+compare.mods <- read.csv(paste0(wd,'/Scots_pine/compare_performance_interactions2.csv'))
+compare.mods$X<-NULL
+knitr::kable(head(compare.mods[,1:9],15), booktabs=TRUE,
              caption = "Comparison of 'best' model indices") %>% 
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
-
-plot(compare.best)
-write.csv(compare.best, paste0(wd,'/Scots_pine/compare_performance_interactions.csv'))
+#compare.perf <- image_read(paste0(wd,'figures/compare_best_interactions.png'))
+#print(compare.perf)
 
 ```
 
@@ -155,49 +156,66 @@ write.csv(compare.best, paste0(wd,'/Scots_pine/compare_performance_interactions.
 Using the five 'best' models from the comparisons above, cross-validation was carried out.
 
 ```{r cross-validation, include=FALSE}
-# run on training and test datasets
-results<-NULL
+#results<-NULL
 
-for(i in 1:1000) {
+#for(i in 1:1000) {
   
   #i<-1
-  rows<-sample(x=1:nrow(sp),size=round(nrow(sp)*0.25,1))
-  training<-sp[-rows,]
-  testing<-sp[rows,]
+  #rows<-sample(x=1:nrow(sp),size=round(nrow(sp.raw)*0.25,1))
+  #training<-sp.raw[-rows,]
+  #testing<-sp.raw[rows,]
   
-  whittet.mod1 <- lmer(log(Hraw) ~ MAP_T + FFP_P + MAP_T*FFP_P + (1|Trial/Block/Provenance), data = training)
-  dredge1<-lmer(log(Hraw) ~ DD_18_T + NFFD_P + DD_18_T*NFFD_P + (1|Trial/Block/Provenance),data = training)
-  diff.mod3 <- lmer(log(Hraw) ~ DD0_P + PAS_T + DD0_P*PAS_T + (1|Trial/Block/Provenance), data = training)
-  pair.mod2 <- lmer(log(Hraw) ~ MWMT_P + PAS_T + MWMT_P*PAS_T + (1|Trial/Block/Provenance), data = training)
-  whittet.mod3 <- lmer(log(Hraw) ~ DD5_T + MWMT_P + MCMT_T + MAP_T + TD_P + DD5_T*MWMT_P + 
-                         (1|Trial/Block/Provenance), data = training)
+  #dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = training)
+  #dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = training)
+  #whittet.mod3 <- lmer(log(W17Height) ~ scale(DD5_T) + scale(MWMT_P) + scale(MCMT_T) + scale(MAP_T) + scale(TD_P) + scale(DD5_T)*scale(MWMT_P) + (1|Trial/Block/Provenance), data = training)
+  #pair.mod2 <- lmer(log(W17Height) ~ scale(MWMT_P) + scale(PAS_T) + scale(MWMT_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=training)
+  #diff.mod3 <- lmer(log(W17Height) ~ scale(DD0_P) + scale(PAS_T) + scale(DD0_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=training)
 
-  p.wh1<-predict(whittet.mod1,testing)-log(testing$Hraw)
-  p.d1<-predict(dredge1,testing)-log(testing$Hraw)
-  p.df3<-predict(diff.mod3,testing)-log(testing$Hraw)
-  p.pr2<-predict(pair.mod2,testing)-log(testing$Hraw)
-  p.wh3<-predict(whittet.mod3,testing)-log(testing$Hraw)
+  #p.d3<-predict(dredge3,testing)-log(testing$W17Height)
+  #p.d2<-predict(dredge2,testing)-log(testing$W17Height)
+  #p.wh3<-predict(whittet.mod3,testing)-log(testing$W17Height)
+  #p.pr2<-predict(pair.mod2,testing)-log(testing$W17Height)
+  #p.df3<-predict(diff.mod3,testing)-log(testing$W17Height)
   
-  results<-rbind(results,data.frame(
-    Run=rep(i,5),
-    Model=c('whittet1','dredge1','diff.mod3','pair.mod2','whittet.mod3'),
-    MAE=c(mean(abs(p.wh1)),mean(abs(p.d1)),mean(abs(p.df3)),mean(abs(p.pr2)),mean(abs(p.wh3))),
-    R2marg=c(r2(whittet.mod1)$R2_marginal, r2(dredge1)$R2_marginal,r2(diff.mod3)$R2_marginal,
-             r2(pair.mod2)$R2_marginal,r2(whittet.mod3)$R2_marginal)))
+  #results<-rbind(results,data.frame(
+    #Run=rep(i,5),
+    #Model=c('dredge3','dredge2','whittet.mod3','pair.mod2','diff.mod3'),
+    #MAE=c(mean(abs(p.d3)),mean(abs(p.d2)),mean(abs(p.wh3)),mean(abs(p.pr2)),mean(abs(p.df3))),
+    #R2marg=c(r2(dredge3)$R2_marginal, r2(dredge2)$R2_marginal,r2(whittet.mod3)$R2_marginal,
+             #r2(pair.mod2)$R2_marginal,r2(diff.mod3)$R2_marginal)))
   
-}
+#}
 
-write.csv(results, paste0(wd,'Scots_pine/cross-validation_results_interactions.csv'))
+#write.csv(results, paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv'))
 
 ```
 
-The results of the cross validation indicate that...
+The results of the cross validation indicate that "dredge2" and "dredge3" have the highest R2 marginal.
+Both also showed the lowest MAE.
+These two models were therefore taken forwards to be tested within the ΔTraitSDM framework.
+The two models took the forms:
+
+dredge2 = Height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T + (1|Trial/Block/Provenance)
+
+dredge3 = Height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
+
+```{r model-check}
+
+dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
+check_model(dredge2)
+
+dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+check_model(dredge3)
+
+```
+
+The model checks above show...
 
 ```{r cv-results, include=T, echo=FALSE}
-results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results.csv'))
-summary(results)
-hist(results$MAE,breaks=50)
-hist(results$R2marg,breaks=50)
+results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv'))
+#summary(results)
+#hist(results$MAE,breaks=50)
+#hist(results$R2marg,breaks=50)
 
 results %>% 
   ggplot(aes(Model,MAE, colour=Model))+geom_boxplot()+
@@ -211,76 +229,69 @@ results %>%
   ylab("R2marg")+
   theme(axis.text.x = element_blank())
 
-resAVE<-aggregate(MAE~Model,results,FUN=mean)
-resAVE<-resAVE[order(resAVE[,2],decreasing=F),]
+#resAVE<-aggregate(MAE~Model,results,FUN=mean)
+#resAVE<-resAVE[order(resAVE[,2],decreasing=F),]
 
 ```
 
-## DeltaTraitSDM
+## ΔTraitSDM
 
-```{r climate-surfaces, include=TRUE, echo=FALSE}
+Several approaches were taken when applying the models within ΔTraitSDM.
+Firstly, climate surfaces for the 'climate normal' period (an average taken from 1960-1990) were used to estimate distribution.
+Secondly, separate climate surfaces were produced for the year when the seed was collected for the provenance trial (2007) and the year the seedlings were planted at the trial site (2012).
+Finally, a climate surface representing possible future climate change was used to estimate future distribution.
 
-library(foreign)
-dem <- raster(paste0(wd,'/climate_surfaces/UKdem1k.tif'))
+```{r climate-surfaces, include=FALSE, echo=FALSE}
+
+#library(foreign)
+#dem <- raster(paste0(wd,'/climate_surfaces/UKdem1k.tif'))
 # convert to dataframe x,y,elev
-demDF <- as.data.frame(dem,xy=TRUE)
-head(demDF)
-colnames(demDF) <- c('x','y','elev')
+#demDF <- as.data.frame(dem,xy=TRUE)
+#head(demDF)
+#colnames(demDF) <- c('x','y','elev')
 # export for Arc to get coordinates
-write.csv(demDF, paste0(wd,"climate_surfaces/UKdem1k_df.csv"), row.names = FALSE, quote = FALSE)
+#write.csv(demDF, paste0(wd,"climate_surfaces/UKdem1k_df.csv"), row.names = FALSE, quote = FALSE)
 # read back in reprojected data (WGS84) with lat long (data management::features::get xy coordinates)
-coords <- read.dbf(paste0(wd,"climate_surfaces/dem1k_reproj.dbf"))
-head(coords)
-summary(coords)
-coords$elev<-as.numeric(as.character(coords$elev))
-summary(coords)
-coords<-na.omit(coords)
+#coords <- read.dbf(paste0(wd,"climate_surfaces/dem1k_reproj.dbf"))
+#head(coords)
+#summary(coords)
+#coords$elev<-as.numeric(as.character(coords$elev))
+#summary(coords)
+#coords<-na.omit(coords)
 #coords<-filter(coords, elev!=1080)
 # correct format
-coords <- coords[,c(1,2,5,4,3)]
-colnames(coords) <- c("id1","id2","lat","long","elev")
-head(coords)
-histogram(coords$elev)
+#coords <- coords[,c(1,2,5,4,3)]
+#colnames(coords) <- c("id1","id2","lat","long","elev")
+#head(coords)
+#histogram(coords$elev)
 #check
-ggplot(coords)+
-  geom_point(aes(long,lat,col=elev))
+#ggplot(coords)+
+  #geom_point(aes(long,lat,col=elev))
 
 # export for climateEU
 #write.csv(coords, paste0(wd,"climate_surfaces/for-climateEU.csv"))
 
 # read in climate data
-climate <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Normal_1961_1990Y.csv"))
+#climate <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Normal_1961_1990Y.csv"))
 #head(climate)
-colnames(climate)<-c('x','y','lat','long','elev','MAT','MWMT','MCMT','TD','MAP','MSP','AHM','SHM','DD0','DD5','DD_18','DD18','NFFD','bFFP','eFFP','FFP','PAS','EMT','Eref','CMD')
-climate[climate=="-9999"]<-NA
-climate <- na.omit(climate)
-summary(climate)
-#ggplot(climate)+geom_point(aes(x,y))
-library(raster)
-coordinates(climate) <- ~ x + y
-gridded(climate) <- TRUE
+#colnames(climate)<-c('x','y','lat','long','elev','MAT','MWMT','MCMT','TD','MAP','MSP','AHM','SHM','DD0','DD5','DD_18','DD18','NFFD','bFFP','eFFP','FFP','PAS','EMT','Eref','CMD')
+#climate[climate=="-9999"]<-NA
+#climate <- na.omit(climate)
 #summary(climate)
-#DD_18 <- raster(climate,layer='DD_18')
-#plot(DD_18,main="DD < 18")
-#summary(climate$DD_18)
-#NFFD <- raster(climate,layer='NFFD')
-#plot(NFFD, main="NFFD")
-MAP <- raster(climate,layer='MAP')
-plot(MAP,main="MAP")
-FFP <- raster(climate,layer='FFP')
-plot(FFP,main="FFP")
-#TD <- raster(climate,layer='TD')
-#plot(TD,main="TD")
-#Eref <- raster(climate, layer='Eref')
-#plot(Eref,main="Eref")
-#DD0 <- raster(climate,layer="DD0")
-#plot(DD0,main="DD0")
-PAS <- raster(climate,layer="PAS")
-plot(PAS,main="PAS")
-MWMT <- raster(climate,layer='MWMT')
-plot(MWMT,main='MWMT')
+#ggplot(climate)+geom_point(aes(x,y))
+#coordinates(climate) <- ~ x + y
+#gridded(climate) <- TRUE
+#MAP <- raster(climate,layer='MAP')
+#FFP <- raster(climate,layer='FFP')
+#PAS <- raster(climate,layer="PAS")
+#MWMT <- raster(climate,layer='MWMT')
+# check climate data looks ok
+#stack.1 <- stack(MAP,FFP,PAS,MWMT)
+#plot(stack.1,main="Check the climate variable are plotting correctly (30 yr average)")
+
 ```
 
+Figure \@ref(fig:DTSDM1) shows predicted height distribution 
 
 ```{r DTSDM1, include=TRUE, echo=FALSE}
 
@@ -293,8 +304,8 @@ str(sp.raw)
 sp.raw<-na.omit(sp.raw)
 
 # check data for input to climateEU
-cEUinput <- read.csv(paste0(wd,"climate_surfaces/for-climateEU.csv"))
-head(cEUinput)
+#cEUinput <- read.csv(paste0(wd,"climate_surfaces/for-climateEU.csv"))
+#head(cEUinput)
 
 # use 30 yr average rasters first
 climate <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Normal_1961_1990Y.csv"))
@@ -302,38 +313,38 @@ climate <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Normal_1961_1990Y.
 colnames(climate)<-c('x','y','lat','long','elev','MAT','MWMT','MCMT','TD','MAP','MSP','AHM','SHM','DD0','DD5','DD_18','DD18','NFFD','bFFP','eFFP','FFP','PAS','EMT','Eref','CMD')
 climate[climate=="-9999"]<-NA
 climate <- na.omit(climate)
-summary(climate)
+#summary(climate)
 #ggplot(climate)+geom_point(aes(x,y))
 coordinates(climate) <- ~ x + y
 gridded(climate) <- TRUE
 #summary(climate)
-MWMT_P <- raster(climate,layer='MWMT')
+DD_18_T <- raster(climate,layer='DD_18')
+NFFD_P <- raster(climate,layer="NFFD")
 PAS_T <- raster(climate,layer="PAS")
-MAP_T <- raster(climate,layer="MAP")
-FFP_P <- raster(climate,layer="FFP")
+TD_T <- raster(climate,layer="TD")
 
 # raster stack of climate variables
-ST_H <- MWMT_P
+ST_H <- DD_18_T
 #mean(sp$Hraw) #  stand age
 values(ST_H) <- 126 # assign mean height to raster of same extent
-plot(ST_H)
+#plot(ST_H)
 
-rsmax1 <- stack(ST_H, MWMT_P, PAS_T) 
-names(rsmax1)= c("Hraw","MWMT_P","PAS_T")
+rsmax1 <- stack(ST_H, DD_18_T, NFFD_P, PAS_T) 
+names(rsmax1)= c("W17Height","DD_18_T","NFFD_P","PAS_T")
 names(rsmax1)
-plot(rsmax1)
+plot(rsmax1, main="Raster stack for model input")
 
 #crs(predH)<- "+init=epsg:27700" # british national grid
 UK <- shapefile(paste0(wd,"Scots_pine/european_region_region.shp"))
-unique(UK$NAME)
+#unique(UK$NAME)
 scot <- UK[which(UK$NAME=="Scotland Euro Region"),]
-plot(scot)
+#plot(scot)
 
-pair.mod2 <- lmer(log(W17Height) ~ scale(MWMT_P) + scale(PAS_T) + scale(MWMT_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=sp.raw)
-predH1 <- predict(rsmax1, pair.mod2, re.form=NA, type='response') #whittet.mod2 #dredge1
-predH1<- exp(predH1)
+dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
+predH1 <- predict(rsmax1, dredge2, re.form=NA, type='response') #whittet.mod2 #dredge1
+predH1<- log(predH1)
 predH1_crop <- crop(predH1, scot)
-plot(predH1_crop, main="Tree height predicted (pair.mod2)")
+plot(predH1_crop, main="Tree height predicted (30yr avg climate) (dredge2)")
 
 #tm_shape(predH1_crop) +
   #tm_style("beaver")+
@@ -343,31 +354,31 @@ plot(predH1_crop, main="Tree height predicted (pair.mod2)")
   #tm_borders(lwd=1)+
   #tm_layout(title="Tree height predicted by pair.mod2 (30yr average climate)", title.size = 2)
 
-whittet.mod1 <- lmer(log(W17Height) ~ scale(MAP_T) + scale(FFP_P) + scale(MAP_T)*scale(FFP_P) + (1|Trial/Block/Provenance), data = sp.raw)
-rsmax2 <- stack(ST_H, MAP_T, FFP_P) 
-names(rsmax2)= c("Hraw","MAP_T","FFP_P")
+dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+rsmax2 <- stack(ST_H, DD_18_T, NFFD_P, TD_T) 
+names(rsmax2)= c("W17Height","DD_18_T","NFFD_P", "TD_T")
 names(rsmax2)
-plot(rsmax2)
-predH2 <- predict(rsmax2, whittet.mod1, re.form=NA, type='response') #whittet.mod2 #dredge1
+plot(rsmax2,main="Raster stack for model input")
+predH2 <- predict(rsmax2, dredge3, re.form=NA, type='response') #whittet.mod2 #dredge1
 predH2<- exp(predH2)
 predH2_crop <- crop(predH2, scot)
-plot(predH2_crop, main="Tree height predicted (whittet.mod1)")
+plot(predH2_crop, main="Tree height predicted (30yr avg climate) (dredge3)")
 
 # compare overlap of two model outputs
-comp <- mean(predH1_crop,predH2_crop)
-plot(comp, main="Mean height between 2 models")
+#comp <- mean(predH1_crop,predH2_crop)
+#plot(comp, main="Mean height between 2 models")
 # plot side by side with current distribution
-nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
+#nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
 #summary(nwss)
-nwss<-st_as_sf(nwss)
+#nwss<-st_as_sf(nwss)
 #unique(nwss$DOM_HABITA)
-nativePine<-nwss[which(nwss$DOM_HABITA=="Native pinewood"),]
-ext <- extent(nativePine)
-r <- raster(ext, res=500)
-NPraster <- rasterize(nativePine,r,field=1)
-plot(NPraster)
-stack1 <- stack(comp,NPraster)
-plot(stack1)
+#nativePine<-nwss[which(nwss$DOM_HABITA=="Native pinewood"),]
+#ext <- extent(nativePine)
+#r <- raster(ext, res=500)
+#NPraster <- rasterize(nativePine,r,field=1)
+#plot(NPraster)
+#stack1 <- stack(comp,NPraster)
+#plot(stack1)
 
 
 ```
@@ -376,34 +387,53 @@ Text here considering outputs from 30yr average climate data above
 
 ```{r DTSDM2, include=T, echo=F}
 
+#########################################################################
 # process rasters for planting year (T) and when seeds were harvested (P)
-
 # seeds taken (P) | 2007
 # planted (T) | 2012
+#########################################################################
 
 # use Climate EU to generate raster surfaces for provenance and trial sites separately
-clim07 <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Year_2007Y.csv"))
-head(clim07)
+clim07 <- read.csv(paste0(wd,"climate_surfaces/forclimateEU_Year_2007MSY.csv"))
+#head(clim07)
+clim07 <- clim07[,c(1:5,70:89)]
 colnames(clim07)<-c('x','y','lat','long','elev','MAT_P','MWMT_P','MCMT_P','TD_P','MAP_P','MSP_P','AHM_P','SHM_P',
                     'DD0_P','DD5_P','DD_18_P','DD18_P','NFFD_P','bFFP_P','eFFP_P','FFP_P','PAS_P','EMT_P','Eref_P','CMD_P')
 clim07[clim07=="-9999"]<-NA
 clim07 <- na.omit(clim07)
-summary(clim07)
+#summary(clim07)
 
-clim12 <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Year_2012Y.csv"))
-head(clim12)
+clim12 <- read.csv(paste0(wd,"climate_surfaces/forclimateEU_Year_2012MSY.csv"))
+#head(clim12)
+clim12 <- clim12[,c(1:5,70:89)]
 colnames(clim12)<-c('x','y','lat','long','elev','MAT_T','MWMT_T','MCMT_T','TD_T','MAP_T','MSP_T','AHM_T','SHM_T',
                     'DD0_T','DD5_T','DD_18_T','DD18_T','NFFD_T','bFFP_T','eFFP_T','FFP_T','PAS_T','EMT_T','Eref_T','CMD_T')
 clim12[clim12=="-9999"]<-NA
 clim12 <- na.omit(clim12)
-summary(clim12)
+#summary(clim12)
 
 coordinates(clim07) <- ~ x + y
 gridded(clim07) <- TRUE
-MWMT_P <- raster(clim07,layer='MWMT_P')
-plot(MWMT_P,main="Mean warmest month temperature at the provenance")
-PAS_T <- raster(clim12,layer='PAS_T')
-plot(PAS_T,main="Precipitation as snow at the trial site")
+NFFD_P <- raster(clim07,layer='NFFD_P')
+#plot(NFFD_P,main="Number of frost-free days at the provenance")
+coordinates(clim12) <- ~ x + y
+gridded(clim12) <- TRUE
+DD_18_T <- raster(clim12,layer='DD_18_T')
+PAS_T <- raster(clim12,layer="PAS_T")
+TD_T<-raster(clim12,layer="TD_T")
+
+# once rasters are processed, scale them, or ensure that model equation scales them
+# raster stack of climate variables
+
+dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+rsmax3 <- stack(ST_H, DD_18_T, NFFD_P, TD_T) 
+names(rsmax3)= c("W17Height","DD_18_T","NFFD_P", "TD_T")
+names(rsmax3)
+plot(rsmax3,main="Raster stack for model input")
+predH3 <- predict(rsmax3, dredge3, re.form=NA, type='response') #whittet.mod2 #dredge1
+predH3<- exp(predH3)
+predH3_crop <- crop(predH3, scot)
+plot(predH3_crop, main="Tree height predicted using seed collection and planting year climate (dredge3)")
 
 ```
 
