@@ -1,8 +1,6 @@
 ---
 title: "Applying the ΔTraitSDM to a multi-site provenance trial of native Scots pine (_Pinus sylvestris_)"
-output: 
-  prettydoc::html_pretty:
-    theme: architect
+output: bookdown::html_document2 
     
 ---
 
@@ -36,7 +34,7 @@ wd<-"C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSD
 This file documents the process of finding the most important climate variables which may be influencing native Scots pine height across Scotland.
 It shows the testing of a number of mixed-effects models, their comparison, and their implementation within a ΔTraitSDM framework to predict current and future distribution of the trait of interest.
 
-## Climate variables driving height
+# Climate variables driving height
 
 A number of strategies have been applied to explore the data and try to uncover the climate variables which may be explanatory for height.
 
@@ -103,10 +101,10 @@ sp %>%
   theme(axis.text.x = element_blank()) #element_text(size=6,angle = 90, hjust = 1))
 ```
 
-## Initial models to try
+# Initial models
 
-A number of models combining the potentially 'important' variables highlighted above have been produced (see code chunk below).
-These were compared via a number of indices(Figure \@ref(fig:model-performance)).
+A number of models combining the potentially 'important' variables highlighted above have been produced.
+These were compared via a number of indices (Figure \@ref(fig:model-performance)).
 
 ## Compare model performance
 
@@ -190,26 +188,6 @@ Using the five 'best' models from the comparisons above, cross-validation was ca
 
 ```
 
-The results of the cross validation indicate that "dredge2" and "dredge3" have the highest R2 marginal.
-Both also showed the lowest MAE.
-These two models were therefore taken forwards to be tested within the ΔTraitSDM framework.
-The two models took the forms:
-
-dredge2 = Height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T + (1|Trial/Block/Provenance)
-
-dredge3 = Height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
-
-```{r model-check}
-
-dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
-check_model(dredge2)
-
-dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
-check_model(dredge3)
-
-```
-
-The model checks above show...
 
 ```{r cv-results, include=T, echo=FALSE}
 results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv'))
@@ -234,12 +212,37 @@ results %>%
 
 ```
 
-## ΔTraitSDM
+The results of the cross validation indicate that "dredge2" and "dredge3" have the highest R2 marginal.
+Both also showed the lowest MAE.
+These two models were therefore taken forwards to be tested within the ΔTraitSDM framework.
+The two models took the forms:
+
+dredge2 = Height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T + (1|Trial/Block/Provenance)
+
+dredge3 = Height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
+
+The models' performance is illustrated in Figure \@ref(fig:model-check)
+
+```{r model-check, include=TRUE,echo=FALSE,fig.cap="Model performance"}
+
+dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
+check_model(dredge2)
+
+dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+check_model(dredge3)
+
+```
+
+The model checks above show that...
+
+# ΔTraitSDM
 
 Several approaches were taken when applying the models within ΔTraitSDM.
 Firstly, climate surfaces for the 'climate normal' period (an average taken from 1960-1990) were used to estimate distribution.
 Secondly, separate climate surfaces were produced for the year when the seed was collected for the provenance trial (2007) and the year the seedlings were planted at the trial site (2012).
 Finally, a climate surface representing possible future climate change was used to estimate future distribution.
+
+## Predicted distribution for current climate
 
 ```{r climate-surfaces, include=FALSE, echo=FALSE}
 
@@ -291,9 +294,9 @@ Finally, a climate surface representing possible future climate change was used 
 
 ```
 
-Figure \@ref(fig:DTSDM1) shows predicted height distribution 
+Figure \@ref(fig:DTSDM1) shows predicted height distribution for the current climate using the 30yr average climate 'normal' for two models.
 
-```{r DTSDM1, include=TRUE, echo=FALSE}
+```{r DTSDM1, include=TRUE, echo=FALSE, fig.cap="Height predicted using 30yr average normal climate"}
 
 wd <- "~/R/DeltaTraitSDM/"
 
@@ -383,9 +386,9 @@ plot(predH2_crop, main="Tree height predicted (30yr avg climate) (dredge3)")
 
 ```
 
-Text here considering outputs from 30yr average climate data above
+Text here considering outputs from 30yr average climate data above.
 
-```{r DTSDM2, include=T, echo=F}
+```{r DTSDM2, include=T, echo=F, fig.cap="Height predicted using climate data from seed collection and planting years"}
 
 #########################################################################
 # process rasters for planting year (T) and when seeds were harvested (P)
@@ -436,4 +439,9 @@ predH3_crop <- crop(predH3, scot)
 plot(predH3_crop, main="Tree height predicted using seed collection and planting year climate (dredge3)")
 
 ```
+
+Text here considering \@ref(fig:DTSDM2)...
+
+## Predicted distribution under future climate
+
 
