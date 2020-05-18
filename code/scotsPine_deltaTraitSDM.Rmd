@@ -367,23 +367,6 @@ predH2<- exp(predH2)
 predH2_crop <- crop(predH2, scot)
 plot(predH2_crop, main="Tree height predicted (30yr avg climate) (dredge3)")
 
-# compare overlap of two model outputs
-#comp <- mean(predH1_crop,predH2_crop)
-#plot(comp, main="Mean height between 2 models")
-# plot side by side with current distribution
-#nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
-#summary(nwss)
-#nwss<-st_as_sf(nwss)
-#unique(nwss$DOM_HABITA)
-#nativePine<-nwss[which(nwss$DOM_HABITA=="Native pinewood"),]
-#ext <- extent(nativePine)
-#r <- raster(ext, res=500)
-#NPraster <- rasterize(nativePine,r,field=1)
-#plot(NPraster)
-#stack1 <- stack(comp,NPraster)
-#plot(stack1)
-
-
 ```
 
 Text here considering outputs from 30yr average climate data above.
@@ -442,6 +425,36 @@ plot(predH3_crop, main="Tree height predicted using seed collection and planting
 
 Text here considering \@ref(fig:DTSDM2)...
 
+Mask using current distribution...
+
+```{r current-dist, include=TRUE,echo=FALSE,fig.cap="Current distribution of native Scots pine"}
+
+# current distribution
+nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
+#summary(nwss)
+nwss<-st_as_sf(nwss)
+#unique(nwss$DOM_HABITA)
+nativePine<-nwss[which(nwss$DOM_HABITA=="Native pinewood"),]
+crs(predH3_crop)
+crs(nativePine)
+crs(predH3_crop)<-crs(nativePine)
+predH_mask<- mask(predH3_crop, nativePine) 
+plot(predH_mask, main="Tree height prediction within Scots pine range for current climatic conditions")
+
+```
+
+
+```{r current-dist, include=TRUE,echo=FALSE,fig.cap="Future suitability for native Scots pine"}
+
+# future potential distribution
+esc <- shapefile(paste0(wd,"Scots_pine/sp_esc_baseline.shp"))
+#plot(esc)
+crs(esc)
+#esc_crop <- crop(esc,scot)
+predH_mask2 <- mask(predH3_crop,esc)
+
+```
+
 ## Predicted distribution under future climate
 
-
+Future climate = RCP 8.5 2050 from HadGCM model.
