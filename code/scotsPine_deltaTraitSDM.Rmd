@@ -13,19 +13,22 @@ library(ggplot2)
 library(lme4)
 library(nlme)
 library(MuMIn)
-library(raster)
 library(rgdal)
 library(rworldmap)
 library(sjPlot) 
 library(corrplot)
 library(caret)
 library(performance)
+library(stargazer)
 library(kableExtra)
 library(sf)
-library(raster)
-library(foreign)
-library(tmap)
-library(magick)
+library(sp) # for polygons
+library(raster) # for rasters
+library(tmap) # for plotting
+library(viridis) # for palette
+library(classInt) # control raster bins
+
+extrafont::font_import() # make sure fonts loaded
 
 wd<-"C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/"
 
@@ -38,34 +41,32 @@ It shows the testing of a number of mixed-effects models, their comparison, and 
 
 A number of strategies have been applied to explore the data and try to uncover the climate variables which may be explanatory for height.
 
-According to pairplots:
+According to pairplots, the variables with greatest correlation with height included: MWMT_T, PAS_T, TD_T, DD0_T, MCMT_T, eFFP_T (Figure \@ref(fig:pairplots)).
 
-  - MWMT_T
-  - PAS_T 
-  - TD_T
-  - DD0_T 
-  - MCMT_T
-  - eFFP_T
-  - Eref_T
-  - EMT_T 
-  - DD_18_T
-  - NFFD_T
+```{r pairplots, include=T, echo=F, fig.cap="Pairplots",out.width="100%"}
+
+knitr::include_graphics(paste0(wd,'figures/sp_pairplots.png'))
+
+```
+
   
-According to PCA:
+According to PCA, variables most correlated with the largest principal components included: DD_18_T, FFP_T, bFFP_P, FFP_P, and TD_P (Figure \@ref(fig:pca)).
 
-  - DD_18_T
-  - FFP_T
-  - bFFP_P
-  - FFP_P
-  - TD_P
+```{r pca, include=T, echo=F, fig.cap="PCA", out.width="100%"}
+
+knitr::include_graphics(paste0(wd,'figures/sp_PCA_biplot.png'))
+
+```
+
   
-According to exploration/difference between trial & provenance:
+According to exploration of the difference between trial & provenance, variables included: PAS, TD, MWMT, DD0, and MCMT (Figure \@ref(fig:diff)).
 
-  - PAS
-  - TD
-  - MWMT
-  - DD0
-  - MCMT
+```{r diff, include=TRUE, echo=FALSE, fig.cap="Difference in climate variables between trial and provenance sites"}
+
+knitr::include_graphics(paste0(wd,'figures/H_response_T-P_diff.png'))
+
+```
+
   
 So more generally, the factors driving height may be: *degree days below 18*, *precipitation as snow*, *temperature extremes* (warmest and coldest month temperatures, degree days below 0), *frost free period* and when this begins/ends, and temperature difference between coldest and warmest temperatures (*continentality*).
   
@@ -103,12 +104,12 @@ sp %>%
 
 # Initial models
 
-A number of models combining the potentially 'important' variables highlighted above have been produced.
-These were compared via a number of indices (Figure \@ref(fig:model-performance)).
+A number of models combining the potentially important variables highlighted above have been produced.
+These were compared via a number of indices (Table \@ref(tab:model-performance)).
 
 ## Compare model performance
 
-```{r model-performance, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="A comparison plot of several models"}
+```{r model-performance, include=TRUE, warning=FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="A comparison plot of several models"}
 
 # initial models
 #pair.mod1 <- lmer(W17Height ~ scale(MWMT_T) + scale(PAS_P) + scale(MWMT_T)*scale(PAS_P) + (1|Trial/Block/Provenance), data=sp.raw)
@@ -142,7 +143,7 @@ These were compared via a number of indices (Figure \@ref(fig:model-performance)
 compare.mods <- read.csv(paste0(wd,'/Scots_pine/compare_performance_interactions2.csv'))
 compare.mods$X<-NULL
 knitr::kable(head(compare.mods[,1:9],15), booktabs=TRUE,
-             caption = "Comparison of 'best' model indices") %>% 
+             caption = "Comparison of model indices") %>% 
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
 #compare.perf <- image_read(paste0(wd,'figures/compare_best_interactions.png'))
 #print(compare.perf)
@@ -189,7 +190,7 @@ Using the five 'best' models from the comparisons above, cross-validation was ca
 ```
 
 
-```{r cv-results, include=T, echo=FALSE}
+```{r cv-results, include=T, echo=FALSE, warning=FALSE}
 results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv'))
 #summary(results)
 #hist(results$MAE,breaks=50)
@@ -213,7 +214,7 @@ results %>%
 ```
 
 The results of the cross validation indicate that "dredge2" and "dredge3" have the highest R2 marginal.
-Both also showed the lowest MAE.
+Both also showed the lowest Mean Absolute Error (MAE).
 These two models were therefore taken forwards to be tested within the ΔTraitSDM framework.
 The two models took the forms:
 
@@ -221,25 +222,98 @@ dredge2 = Height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T 
 
 dredge3 = Height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
 
-The models' performance is illustrated in Figure \@ref(fig:model-check)
+Their summaries are shown below:
 
-```{r model-check, include=TRUE,echo=FALSE,fig.cap="Model performance"}
+```{r dredge2, include=TRUE, echo=FALSE}
 
 dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
-check_model(dredge2)
+
+stargazer(dredge2, type = "text",
+          digits = 3,
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          digit.separator = "")
+
+```
+
+The summary of dredge 2 illustrates that...
+
+```{r dredge3, include=TRUE, echo=FALSE}
 
 dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+
+stargazer(dredge3, type = "text",
+          digits = 3,
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          digit.separator = "")
+
+```
+
+The summary of dredge3 illustrates that...
+As degree days below 18 decrease, height decreases (not significant).
+As the number of frost-free days increase, height increases slightly (significant).
+As continentality increases (larger annual temperature range), height increases (signficant).
+
+
+```{r visualise-fixed, included=TRUE, echo=FALSE, fig.cap="Visualisation of fixed effects for dredge3" }
+
+# Extract out the parameter estimates and confidence intervals and manipulate the data
+dataPlot <- data.frame(cbind( fixef(dredge3), confint(dredge3)[ 5:10, ]))
+rownames(dataPlot)[1] <- "Intercept"
+colnames(dataPlot) <- c("est", "L95", "U95")
+dataPlot$parameter <- rownames(dataPlot)
+
+# Print the new dataframe
+print(dataPlot)
+
+# Plot the results using ggplot2
+ggplot(dataPlot, aes(x = parameter, y = est,
+                     ymin = L95, ymax = U95)) +
+    geom_hline( yintercept = 0, color = 'red' ) +
+    geom_linerange() + geom_point() + coord_flip() + theme_minimal()
+
+```
+
+```{r}
+install.packages("devtools")
+library(devtools)
+devtools::install_github("neuropsychology/psycho.R")
+library(psycho)
+
+devtools::install_github("easystats/easystats")
+
+dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+
+results <- psycho::analyze(dredge3, CI = 95)
+
+summary(results) %>% 
+  mutate(p = psycho::format_p(p))
+```
+
+
+<!--The performance of each model is illustrated by Figures \@ref(fig:dredge2-check) and \@ref(fig:dredge3-check).
+
+```{r dredge2-check, include=TRUE,echo=FALSE,fig.cap="dredge2 model performance"}
+
+check_model(dredge2)
+
+```
+
+```{r dredge3-check, include=TRUE,echo=FALSE,fig.cap="dredge3 model performance"}
+
 check_model(dredge3)
 
 ```
 
-The model checks above show that...
+The model checks above show that...-->
 
 # ΔTraitSDM
 
 Several approaches were taken when applying the models within ΔTraitSDM.
+
 Firstly, climate surfaces for the 'climate normal' period (an average taken from 1960-1990) were used to estimate distribution.
+
 Secondly, separate climate surfaces were produced for the year when the seed was collected for the provenance trial (2007) and the year the seedlings were planted at the trial site (2012).
+
 Finally, a climate surface representing possible future climate change was used to estimate future distribution.
 
 ## Predicted distribution for current climate
@@ -294,16 +368,16 @@ Finally, a climate surface representing possible future climate change was used 
 
 ```
 
-Figure \@ref(fig:DTSDM1) shows predicted height distribution for the current climate using the 30yr average climate 'normal' for two models.
+Figures \@ref(fig:DTSDM1) and \@ref(fig:DTSDM1a) show predicted height distribution for the current climate using the 30yr average climate 'normal' for two models.
 
-```{r DTSDM1, include=TRUE, echo=FALSE, fig.cap="Height predicted using 30yr average normal climate"}
+```{r DTSDM1, include=TRUE, echo=FALSE, warning=FALSE, fig.cap="Height predicted using 30yr average normal climate (dredge2)"}
 
 wd <- "~/R/DeltaTraitSDM/"
 
 # sp data
 sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data
 sp.raw$X <- NULL
-str(sp.raw)
+#str(sp.raw)
 sp.raw<-na.omit(sp.raw)
 
 # check data for input to climateEU
@@ -334,8 +408,8 @@ values(ST_H) <- 126 # assign mean height to raster of same extent
 
 rsmax1 <- stack(ST_H, DD_18_T, NFFD_P, PAS_T) 
 names(rsmax1)= c("W17Height","DD_18_T","NFFD_P","PAS_T")
-names(rsmax1)
-plot(rsmax1, main="Raster stack for model input")
+#names(rsmax1)
+#plot(rsmax1, main="Raster stack for model input")
 
 #crs(predH)<- "+init=epsg:27700" # british national grid
 UK <- shapefile(paste0(wd,"Scots_pine/european_region_region.shp"))
@@ -347,31 +421,60 @@ dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + s
 predH1 <- predict(rsmax1, dredge2, re.form=NA, type='response') #whittet.mod2 #dredge1
 predH1<- log(predH1)
 predH1_crop <- crop(predH1, scot)
-plot(predH1_crop, main="Tree height predicted (30yr avg climate) (dredge2)")
+#plot(predH1_crop, main="Tree height predicted (30yr avg climate) (dredge2)")
 
-#tm_shape(predH1_crop) +
-  #tm_style("beaver")+
-  #tm_raster(palette="PuBuGn",style = 'pretty') +
-  #tm_legend(outside = TRUE)+
-  #tm_shape(scot)+
-  #tm_borders(lwd=1)+
-  #tm_layout(title="Tree height predicted by pair.mod2 (30yr average climate)", title.size = 2)
+crs(predH1_crop)<- "+init=epsg:27700" # british national grid
+# palette
+vir <- viridis(5)
+#mag <- magma(5)
+
+tm_shape(predH1_crop) +
+  tm_raster(title="Predicted height (exp)",
+            palette=vir,
+            style="quantile") +
+  tm_legend(outside = TRUE,
+            legend.title.size=0.8,
+            legend.text.size=0.6)+
+  tm_shape(scot)+
+  tm_borders("lightgrey",lwd=1)+
+  tm_layout(main.title="Tree height predicted under current (30 year average) climate (Model | dredge2)", 
+            main.title.size = 0.9,
+            main.title.fontface = "bold")
+
+```
+
+```{r DTSDM1a, include=TRUE, echo=FALSE, warning=FALSE, fig.cap="Height predicted using 30yr average normal climate (dredge3"}
 
 dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
 rsmax2 <- stack(ST_H, DD_18_T, NFFD_P, TD_T) 
 names(rsmax2)= c("W17Height","DD_18_T","NFFD_P", "TD_T")
-names(rsmax2)
-plot(rsmax2,main="Raster stack for model input")
+#names(rsmax2)
+#plot(rsmax2,main="Raster stack for model input")
 predH2 <- predict(rsmax2, dredge3, re.form=NA, type='response') #whittet.mod2 #dredge1
 predH2<- exp(predH2)
 predH2_crop <- crop(predH2, scot)
-plot(predH2_crop, main="Tree height predicted (30yr avg climate) (dredge3)")
+#plot(predH2_crop, main="Tree height predicted (30yr avg climate) (dredge3)")
+
+crs(predH2_crop)<- "+init=epsg:27700" # british national grid
+
+tm_shape(predH2_crop) +
+  tm_raster(title="Predicted height (exp)",
+            palette=vir,
+            style="quantile") +
+  tm_legend(outside = TRUE,
+            legend.title.size=0.8,
+            legend.text.size=0.6)+
+  tm_shape(scot)+
+  tm_borders("lightgrey",lwd=1)+
+  tm_layout(main.title="Tree height predicted under current (30 year average) climate (Model | dredge3)", 
+            main.title.size = 0.9,
+            main.title.fontface = "bold")
 
 ```
 
 Text here considering outputs from 30yr average climate data above.
 
-```{r DTSDM2, include=T, echo=F, fig.cap="Height predicted using climate data from seed collection and planting years"}
+```{r DTSDM2, include=T, echo=F, warning=FALSE, fig.cap="Height predicted using climate data from seed collection and planting years"}
 
 #########################################################################
 # process rasters for planting year (T) and when seeds were harvested (P)
@@ -414,20 +517,35 @@ TD_T<-raster(clim12,layer="TD_T")
 dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
 rsmax3 <- stack(ST_H, DD_18_T, NFFD_P, TD_T) 
 names(rsmax3)= c("W17Height","DD_18_T","NFFD_P", "TD_T")
-names(rsmax3)
-plot(rsmax3,main="Raster stack for model input")
+#names(rsmax3)
+#plot(rsmax3,main="Raster stack for model input")
 predH3 <- predict(rsmax3, dredge3, re.form=NA, type='response') #whittet.mod2 #dredge1
 predH3<- exp(predH3)
 predH3_crop <- crop(predH3, scot)
-plot(predH3_crop, main="Tree height predicted using seed collection and planting year climate (dredge3)")
+#plot(predH3_crop, main="Tree height predicted using seed collection and planting year climate (dredge3)")
+
+crs(predH3_crop)<- "+init=epsg:27700" # british national grid
+
+tm_shape(predH3_crop) +
+  tm_raster(title="Predicted height (exp)",
+            palette=vir,
+            style="quantile") +
+  tm_legend(outside = TRUE,
+            legend.title.size=0.8,
+            legend.text.size=0.6)+
+  tm_shape(scot)+
+  tm_borders("lightgrey",lwd=1)+
+  tm_layout(main.title="Tree height predicted using seed collection and planting year climate (Model | dredge3)", 
+            main.title.size = 0.9,
+            main.title.fontface = "bold")
 
 ```
 
-Text here considering \@ref(fig:DTSDM2)...
+Text here considering \@ref(fig:DTSDM2)... using separate climate rasters for seed collection year and planting year...
 
-Mask using current distribution...
+These results were then masked using the current distribution of Scots pine taken from the Native Woodland Survey Scotland...
 
-```{r current-dist, include=TRUE,echo=FALSE,fig.cap="Current distribution of native Scots pine"}
+```{r current-dist, include=TRUE,echo=FALSE,warning=FALSE,fig.cap="Predicted height masked by current distribution of native Scots pine"}
 
 # current distribution
 nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
@@ -435,31 +553,44 @@ nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp"))
 nwss<-st_as_sf(nwss)
 #unique(nwss$DOM_HABITA)
 nativePine<-nwss[which(nwss$DOM_HABITA=="Native pinewood"),]
-crs(predH3_crop)
-crs(nativePine)
+#crs(predH3_crop)
+#crs(nativePine)
 crs(predH3_crop)<-crs(nativePine)
 predH_mask<- mask(predH3_crop, nativePine) 
-plot(predH_mask, main="Tree height prediction within Scots pine range for current climatic conditions")
+#plot(predH_mask, main="Tree height prediction within Scots pine range for current climatic conditions")
+
+tm_shape(predH_mask) +
+  tm_raster(title="Predicted height (exp)",
+            palette=vir,
+            style="quantile") +
+  tm_legend(outside = TRUE,
+            legend.title.size=0.8,
+            legend.text.size=0.6)+
+  tm_shape(scot)+
+  tm_borders("lightgrey",lwd=1)+
+  tm_layout(main.title="Tree height predicted under current climate, masked by current distribution", 
+            main.title.size = 0.9,
+            main.title.fontface = "bold")
 
 ```
 
 
-```{r future-dist, include=TRUE,echo=FALSE,fig.cap="Future suitability for native Scots pine"}
+<!--```{r future-dist, include=TRUE,echo=FALSE,fig.cap="Future suitability for native Scots pine"}
 
 # future potential distribution
-esc <- shapefile(paste0(wd,"Scots_pine/sp_esc_baseline.shp"))
+#esc <- shapefile(paste0(wd,"Scots_pine/sp_esc_baseline.shp"))
 #plot(esc)
-crs(esc)
+#crs(esc)
 #esc_crop <- crop(esc,scot)
-predH_mask2 <- mask(predH3_crop,esc)
+#predH_mask2 <- mask(predH3_crop,esc)
 
-```
+```-->
 
 ## Predicted distribution under future climate
 
-Future climate = RCP 8.5 2050 from HadGCM model.
+Figure \@ref(fig:DTSDM3) illustrates predicted height distribution for 2050 according to predicted climate for RCP 8.5.
 
-```{r DTSDM3, include=TRUE, echo=FALSE}
+```{r DTSDM3, include=TRUE, echo=FALSE, fig.cap="Tree height predicted for future climate", warning=FALSE}
 
 clim2050 <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_HadGEM2-ES_rcp85_2050sY.csv"))
 #head(clim2050)
@@ -480,14 +611,40 @@ values(ST_H) <- 126 # assign mean height to raster of same extent
 #plot(ST_H)
 
 dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
-rsmax3 <- stack(ST_H, DD_18_T, NFFD_P, TD_T) 
-names(rsmax3)= c("W17Height","DD_18_T","NFFD_P", "TD_T")
-names(rsmax3)
-plot(rsmax3,main="Raster stack for model input")
-predH4 <- predict(rsmax3, dredge3, re.form=NA, type='response') #whittet.mod2 #dredge1
+rsmax4 <- stack(ST_H, DD_18_T, NFFD_P, TD_T) 
+names(rsmax4)= c("W17Height","DD_18_T","NFFD_P", "TD_T")
+#names(rsmax3)
+#plot(rsmax3,main="Raster stack for model input")
+predH4 <- predict(rsmax4, dredge3, re.form=NA, type='response') #whittet.mod2 #dredge1
 predH4<- exp(predH4)
 predH4_crop <- crop(predH4, scot)
-plot(predH4_crop, main="Tree height predicted for 2050 (RCP8.5) (dredge3)")
+#plot(predH4_crop, main="Tree height predicted for 2050 (RCP8.5) (dredge3)")
+
+#crs(predH4_crop)
+crs(predH4_crop)<- "+init=epsg:27700" # british national grid
+
+# palette
+vir <- viridis(5)
+#mag <- magma(5)
+
+#classIntervals(values(predH4_crop[["layer"]]), n=5, style = "quantile")
+
+tm_shape(predH4_crop) +
+  tm_raster(title="Predicted height (exp)",
+            palette=vir,
+            style="quantile") +
+  tm_legend(outside = TRUE,
+            legend.title.size=0.8,
+            legend.text.size=0.6)+
+  tm_shape(scot)+
+  tm_borders("lightgrey",lwd=1)+
+  tm_layout(main.title="Tree height predicted for 2050, RCP8.5 (Model | dredge3)", 
+            main.title.size = 0.9,
+            main.title.fontface = "bold")
+
 
 ```
+
+# Conclusions and next steps
+
 
