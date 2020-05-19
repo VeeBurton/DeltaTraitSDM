@@ -444,7 +444,7 @@ plot(predH_mask, main="Tree height prediction within Scots pine range for curren
 ```
 
 
-```{r current-dist, include=TRUE,echo=FALSE,fig.cap="Future suitability for native Scots pine"}
+```{r future-dist, include=TRUE,echo=FALSE,fig.cap="Future suitability for native Scots pine"}
 
 # future potential distribution
 esc <- shapefile(paste0(wd,"Scots_pine/sp_esc_baseline.shp"))
@@ -458,3 +458,36 @@ predH_mask2 <- mask(predH3_crop,esc)
 ## Predicted distribution under future climate
 
 Future climate = RCP 8.5 2050 from HadGCM model.
+
+```{r DTSDM3, include=TRUE, echo=FALSE}
+
+clim2050 <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_HadGEM2-ES_rcp85_2050sY.csv"))
+#head(clim2050)
+colnames(clim2050)<-c('x','y','lat','long','elev','MAT_T','MWMT_T','MCMT_T','TD_T','MAP_T','MSP_T','AHM_T','SHM_T','DD0_T','DD5_T','DD_18_T','DD18_T','NFFD_T','bFFP_T','eFFP_T','FFP_T','PAS_T','EMT_T','Eref_T','CMD_T')
+clim2050[clim2050=="-9999"]<-NA
+clim2050 <- na.omit(clim2050)
+#summary(clim12)
+
+coordinates(clim2050) <- ~ x + y
+gridded(clim2050) <- TRUE
+DD_18_T <- raster(clim2050,layer='DD_18_T')
+NFFD_P <- raster(clim2050, layer="NFFD_T")
+TD_T <- raster(clim2050, layer="TD_T")
+
+ST_H <- DD_18_T
+#mean(sp$Hraw) #  stand age
+values(ST_H) <- 126 # assign mean height to raster of same extent
+#plot(ST_H)
+
+dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+rsmax3 <- stack(ST_H, DD_18_T, NFFD_P, TD_T) 
+names(rsmax3)= c("W17Height","DD_18_T","NFFD_P", "TD_T")
+names(rsmax3)
+plot(rsmax3,main="Raster stack for model input")
+predH4 <- predict(rsmax3, dredge3, re.form=NA, type='response') #whittet.mod2 #dredge1
+predH4<- exp(predH4)
+predH4_crop <- crop(predH4, scot)
+plot(predH4_crop, main="Tree height predicted for 2050 (RCP8.5) (dredge3)")
+
+```
+
