@@ -1,12 +1,14 @@
 ---
 title: "Applying the ΔTraitSDM to a multi-site provenance trial of native Scots pine (_Pinus sylvestris_)"
-output: bookdown::html_document2 
+output: pdf_document  
     
 ---
 
 ```{r setup, include=FALSE}
+
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(message = FALSE)
+
 # load libraries
 library(tidyverse)
 library(ggplot2)
@@ -24,10 +26,12 @@ library(raster) # for rasters
 library(tmap) # for plotting
 library(viridis) # for palette
 library(classInt) # control raster bins
+library(easystats)
 
 #extrafont::font_import() # make sure fonts loaded
 
-wd<-"~/Documents/FR/FR_R/DeltaTraitSDM/" # mac wd
+wd <- "~/R/DeltaTraitSDM/"
+#wd<-"~/Documents/FR/FR_R/DeltaTraitSDM/" # mac wd
 
 ```
 
@@ -42,13 +46,13 @@ The factors driving height may be: *degree days below 18*, *precipitation as sno
 ```{r data, include=FALSE, echo=FALSE}
 
 # read in standardised data (with raw height)
-#sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data PC
-sp.raw <- read.csv(paste0(wd,"data-raw/Scots_pine_H.csv")) # raw data Mac
+sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data PC
+#sp.raw <- read.csv(paste0(wd,"data-raw/Scots_pine_H.csv")) # raw data Mac
 sp.raw$X <- NULL
 #str(sp.raw)
 sp.raw<-na.omit(sp.raw)
-#sp <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H_cent_scal_allvars.csv")) # scaled PC
-sp <- read.csv(paste0(wd,"data-raw/Scots_pine_H_cent_scal_allvars.csv")) # scaled Mac
+sp <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H_cent_scal_allvars.csv")) # scaled PC
+#sp <- read.csv(paste0(wd,"data-raw/Scots_pine_H_cent_scal_allvars.csv")) # scaled Mac
 sp$X <- NULL
 #str(sp)
 colnames(sp)[1]<-"Hscal"
@@ -66,9 +70,8 @@ The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates
 
 ```{r boxplot, include=TRUE, echo=FALSE, fig.cap="Boxplot showing the variation in height at each trial site, split by block and provenance"}
 # double check nesting
-sp.raw %>% 
-  #mutate(nest=factor(Trial:Block:Provenance)) %>%
-  ggplot(aes(Provenance,W17Height,colour=Trial))+geom_boxplot()+
+sp %>% 
+  ggplot(aes(Trial:Block:Provenance,Hraw,colour=Trial))+geom_boxplot()+
   theme_minimal()+
   ylab("Height (mm)")+
   theme(axis.text.x = element_blank()) #element_text(size=6,angle = 90, hjust = 1))
@@ -112,7 +115,8 @@ These were compared via a number of indices (Table \@ref(tab:model-performance))
 #plot(compare.mods)
 
 #write.csv(compare.mods, paste0(wd,'/Scots_pine/compare_performance_interactions2.csv'))
-compare.mods <- read.csv(paste0(wd,'/data-raw/compare_performance_interactions2.csv'))
+compare.mods <- read.csv(paste0(wd,'/Scots_pine/compare_performance_interactions2.csv')) # PC
+#compare.mods <- read.csv(paste0(wd,'/data-raw/compare_performance_interactions2.csv')) # mac
 compare.mods$X<-NULL
 knitr::kable(head(compare.mods[,1:9],15), booktabs=TRUE,
              caption = "Comparison of model indices") %>% 
@@ -163,7 +167,8 @@ Using the five 'best' models from the comparisons above, cross-validation was ca
 
 
 ```{r cv-results, include=T, echo=FALSE, warning=FALSE}
-results<-read.csv(paste0(wd,'data-raw/cross-validation_results_interactions2.csv'))
+results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv')) # PC
+#results<-read.csv(paste0(wd,'data-raw/cross-validation_results_interactions2.csv')) # mac
 #summary(results)
 #hist(results$MAE,breaks=50)
 #hist(results$R2marg,breaks=50)
@@ -248,13 +253,13 @@ ggplot(dataPlot, aes(x = parameter, y = est,
 ```{r dredge3-report, include=TRUE}
 #install.packages("devtools")
 #devtools::install_github("easystats/report")
-library("report")
+#library("report")
 
 dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
 
-results <- report(dredge3, ci= 95)
-table_short(results)
-text_short(results)
+#results <- report(dredge3, ci= 95)
+#table_short(results)
+#text_short(results)
 
 ```
 
@@ -353,7 +358,8 @@ Figures \@ref(fig:DTSDM1) and \@ref(fig:DTSDM1a) show predicted height distribut
 #head(cEUinput)
 
 # use 30 yr average rasters first
-climate <- read.csv(paste0(wd,"data-raw/for-climateEU_Normal_1961_1990Y.csv"))
+climate <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_Normal_1961_1990Y.csv"))
+#climate <- read.csv(paste0(wd,"data-raw/for-climateEU_Normal_1961_1990Y.csv")) # mac
 #head(climate)
 colnames(climate)<-c('x','y','lat','long','elev','MAT','MWMT','MCMT','TD','MAP','MSP','AHM','SHM','DD0','DD5','DD_18','DD18','NFFD','bFFP','eFFP','FFP','PAS','EMT','Eref','CMD')
 climate[climate=="-9999"]<-NA
@@ -380,7 +386,7 @@ names(rsmax1)= c("W17Height","DD_18_T","NFFD_P","PAS_T")
 #plot(rsmax1, main="Raster stack for model input")
 
 #crs(predH)<- "+init=epsg:27700" # british national grid
-UK <- shapefile(paste0(wd,"data-raw/european_region_region.shp"))
+UK <- shapefile(paste0(wd,"Scots_pine/european_region_region.shp"))
 #unique(UK$NAME)
 scot <- UK[which(UK$NAME=="Scotland Euro Region"),]
 #plot(scot)
@@ -451,8 +457,7 @@ Text here considering outputs from 30yr average climate data above.
 #########################################################################
 
 # use Climate EU to generate raster surfaces for provenance and trial sites separately
-#clim07 <- read.csv(paste0(wd,"climate_surfaces/forclimateEU_Year_2007MSY.csv"))
-clim07 <- read.csv(paste0(wd,"data-raw/forclimateEU_Year_2007MSY.csv"))
+clim07 <- read.csv(paste0(wd,"climate_surfaces/forclimateEU_Year_2007MSY.csv"))
 #head(clim07)
 clim07 <- clim07[,c(1:5,70:89)]
 colnames(clim07)<-c('x','y','lat','long','elev','MAT_P','MWMT_P','MCMT_P','TD_P','MAP_P','MSP_P','AHM_P','SHM_P','DD0_P','DD5_P','DD_18_P','DD18_P','NFFD_P','bFFP_P','eFFP_P','FFP_P','PAS_P','EMT_P','Eref_P','CMD_P')
@@ -460,8 +465,7 @@ clim07[clim07=="-9999"]<-NA
 clim07 <- na.omit(clim07)
 #summary(clim07)
 
-#clim12 <- read.csv(paste0(wd,"climate_surfaces/forclimateEU_Year_2012MSY.csv"))
-clim12 <- read.csv(paste0(wd,"data-raw/forclimateEU_Year_2012MSY.csv"))
+clim12 <- read.csv(paste0(wd,"climate_surfaces/forclimateEU_Year_2012MSY.csv"))
 #head(clim12)
 clim12 <- clim12[,c(1:5,70:89)]
 colnames(clim12)<-c('x','y','lat','long','elev','MAT_T','MWMT_T','MCMT_T','TD_T','MAP_T','MSP_T','AHM_T','SHM_T','DD0_T','DD5_T','DD_18_T','DD18_T','NFFD_T','bFFP_T','eFFP_T','FFP_T','PAS_T','EMT_T','Eref_T','CMD_T')
@@ -517,7 +521,7 @@ These results were then masked using the current distribution of Scots pine take
 
 # current distribution
 #nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
-nwss <- shapefile(paste0(wd,"data-raw/FCPRODUCT_S_NWSS.shp")) 
+nwss <- shapefile(paste0(wd,"Scots_pine/FCPRODUCT_S_NWSS.shp")) 
 #summary(nwss)
 nwss<-st_as_sf(nwss)
 #unique(nwss$DOM_HABITA)
@@ -561,8 +565,8 @@ Figure \@ref(fig:DTSDM3) illustrates predicted height distribution for 2050 acco
 
 ```{r DTSDM3, include=TRUE, echo=FALSE, fig.cap="Tree height predicted for future climate", warning=FALSE}
 
-#clim2050 <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_HadGEM2-ES_rcp85_2050sY.csv"))
-clim2050 <- read.csv(paste0(wd,"data-raw/for-climateEU_HadGEM2-ES_rcp85_2050sY.csv"))
+clim2050 <- read.csv(paste0(wd,"climate_surfaces/for-climateEU_HadGEM2-ES_rcp85_2050sY.csv"))
+#clim2050 <- read.csv(paste0(wd,"data-raw/for-climateEU_HadGEM2-ES_rcp85_2050sY.csv"))
 #head(clim2050)
 colnames(clim2050)<-c('x','y','lat','long','elev','MAT_T','MWMT_T','MCMT_T','TD_T','MAP_T','MSP_T','AHM_T','SHM_T','DD0_T','DD5_T','DD_18_T','DD18_T','NFFD_T','bFFP_T','eFFP_T','FFP_T','PAS_T','EMT_T','Eref_T','CMD_T')
 clim2050[clim2050=="-9999"]<-NA
