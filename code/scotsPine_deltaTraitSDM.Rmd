@@ -32,8 +32,8 @@ library(report)
 
 #extrafont::font_import() # make sure fonts loaded
 
-#wd <- "~/R/DeltaTraitSDM/" # PC wd
-wd<-"~/Documents/FR/FR_R/DeltaTraitSDM/" # mac wd
+wd <- "~/R/DeltaTraitSDM/" # PC wd
+#wd<-"~/Documents/FR/FR_R/DeltaTraitSDM/" # mac wd
 
 ```
 
@@ -47,13 +47,13 @@ According to these, factors driving height may be: *degree days below 18*, *prec
 ```{r data, include=FALSE, echo=FALSE}
 
 # read in standardised data (with raw height)
-#sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data PC
-sp.raw <- read.csv(paste0(wd,"data-raw/Scots_pine_H.csv")) # raw data Mac
+sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data PC
+#sp.raw <- read.csv(paste0(wd,"data-raw/Scots_pine_H.csv")) # raw data Mac
 sp.raw$X <- NULL
 #str(sp.raw)
 sp.raw<-na.omit(sp.raw)
-#sp <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H_cent_scal_allvars.csv")) # scaled PC
-sp <- read.csv(paste0(wd,"data-raw/Scots_pine_H_cent_scal_allvars.csv")) # scaled Mac
+sp <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H_cent_scal_allvars.csv")) # scaled PC
+#sp <- read.csv(paste0(wd,"data-raw/Scots_pine_H_cent_scal_allvars.csv")) # scaled Mac
 sp$X <- NULL
 #str(sp)
 colnames(sp)[1]<-"Hscal"
@@ -210,7 +210,8 @@ dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + s
           #digit.separator = "")
 
 results <- report(dredge2, ci= 95)
-table_short(results)
+d2_df<-as.data.frame(table_short(results))
+write.csv(d2_df, "Scots_pine/dredge2_results.csv")
 text_short(results)
 
 ```
@@ -226,7 +227,8 @@ dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + sc
           #digit.separator = "")
 
 results <- report(dredge3, ci= 95)
-table_short(results)
+d3_df<-table_short(results)
+write.csv(d3_df, "Scots_pine/dredge3_results.csv")
 text_short(results)
 
 ```
