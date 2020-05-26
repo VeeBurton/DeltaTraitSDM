@@ -32,7 +32,7 @@ library(report)
 
 #extrafont::font_import() # make sure fonts loaded
 
-wd <- "~/R/DeltaTraitSDM/" # PC wd
+wd <- "C:/Users/vanessa.burton/OneDrive - Forest Research/Documents/R/DeltaTraitSDM/" # PC wd
 #wd<-"~/Documents/FR/FR_R/DeltaTraitSDM/" # mac wd
 
 ```
@@ -71,7 +71,10 @@ The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates
 
 ```{r boxplot, include=T,echo=F,fig.cap="Boxplot"}
 
-knitr::include_graphics(paste0(wd,'figures/scotsPine_height_trial-prov.png'))
+library(ggpubr) # publication ready plots
+ggboxplot(
+  sp.raw, x = "Trial", y = "W17Height",
+  color = "Provenance", palette = "ucscgb")
 
 ```
 
@@ -109,8 +112,8 @@ knitr::include_graphics(paste0(wd,'figures/scotsPine_height_trial-prov.png'))
 #plot(compare.mods)
 
 #write.csv(compare.mods, paste0(wd,'/Scots_pine/compare_performance_interactions2.csv'))
-#compare.mods <- read.csv(paste0(wd,'/Scots_pine/compare_performance_interactions2.csv')) # PC
-compare.mods <- read.csv(paste0(wd,'/data-raw/compare_performance_interactions2.csv')) # mac
+compare.mods <- read.csv(paste0(wd,'/Scots_pine/compare_performance_interactions2.csv')) # PC
+#compare.mods <- read.csv(paste0(wd,'/data-raw/compare_performance_interactions2.csv')) # mac
 compare.mods$X<-NULL
 knitr::kable(head(compare.mods[,1:9],15), booktabs=TRUE,
              caption = "Comparison of model indices") %>% 
@@ -162,27 +165,27 @@ Using the five 'best' models from the comparisons above, cross-validation was ca
 
 
 ```{r cv-results, include=T, echo=FALSE, warning=FALSE}
-#results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv')) # PC
+results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv')) # PC
 #results<-read.csv(paste0(wd,'data-raw/cross-validation_results_interactions2.csv')) # mac
 #summary(results)
 #hist(results$MAE,breaks=50)
 #hist(results$R2marg,breaks=50)
 
-#results %>% 
-  #ggplot(aes(Model,MAE, colour=Model))+geom_boxplot()+
-  #theme_minimal()+
-  #ylab("MAE")+
-  #theme(axis.text.x = element_blank())
+results %>% 
+  ggplot(aes(Model,MAE, colour=Model))+geom_boxplot()+
+  theme_minimal()+
+  ylab("MAE")+
+  theme(axis.text.x = element_blank())
 
-knitr::include_graphics(paste0(wd,'figures/sp_model_compare_MAE.png'))
+#knitr::include_graphics(paste0(wd,'figures/sp_model_compare_MAE.png'))
 
-#results %>% 
-  #ggplot(aes(Model,R2marg, colour=Model))+geom_boxplot()+
-  #theme_minimal()+
-  #ylab("R2marg")+
-  #theme(axis.text.x = element_blank())
+results %>% 
+  ggplot(aes(Model,R2marg, colour=Model))+geom_boxplot()+
+  theme_minimal()+
+  ylab("R2marg")+
+  theme(axis.text.x = element_blank())
 
-knitr::include_graphics(paste0(wd,'figures/sp_model_compare_r2.png'))
+#knitr::include_graphics(paste0(wd,'figures/sp_model_compare_r2.png'))
 
 #resAVE<-aggregate(MAE~Model,results,FUN=mean)
 #resAVE<-resAVE[order(resAVE[,2],decreasing=F),]
@@ -211,7 +214,7 @@ dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + s
 
 results <- report(dredge2, ci= 95)
 d2_df<-as.data.frame(table_short(results))
-write.csv(d2_df, "Scots_pine/dredge2_results.csv")
+#write.csv(d2_df, "Scots_pine/dredge2_results.csv")
 text_short(results)
 
 ```
@@ -228,7 +231,7 @@ dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + sc
 
 results <- report(dredge3, ci= 95)
 d3_df<-table_short(results)
-write.csv(d3_df, "Scots_pine/dredge3_results.csv")
+#write.csv(d3_df, "Scots_pine/dredge3_results.csv")
 text_short(results)
 
 ```
@@ -237,13 +240,13 @@ text_short(results)
 ```{r visualise-fixed, included=TRUE, echo=FALSE, fig.cap="Visualisation of fixed effects for dredge3" }
 
 # Extract out the parameter estimates and confidence intervals and manipulate the data
-dataPlot <- data.frame(cbind( fixef(dredge3), confint(dredge3)[ 5:10, ]))
-rownames(dataPlot)[1] <- "Intercept"
-colnames(dataPlot) <- c("est", "L95", "U95")
-dataPlot$parameter <- rownames(dataPlot)
+#dataPlot <- data.frame(cbind( fixef(dredge3), confint(dredge3)[ 5:10, ]))
+#rownames(dataPlot)[1] <- "Intercept"
+#colnames(dataPlot) <- c("est", "L95", "U95")
+#dataPlot$parameter <- rownames(dataPlot)
 
 # Print the new dataframe
-print(dataPlot)
+#print(dataPlot)
 
 # Plot the results using ggplot2
 #ggplot(dataPlot, aes(x = parameter, y = est,
@@ -251,7 +254,7 @@ print(dataPlot)
     #geom_hline( yintercept = 0, color = 'red' ) +
     #geom_linerange() + geom_point() + coord_flip() + theme_minimal()
 
-knitr::include_graphics(paste0(wd,'figures/dredge3_fixed-effects.png'))
+#knitr::include_graphics(paste0(wd,'figures/dredge3_fixed-effects.png'))
 
 ```
 
@@ -370,15 +373,15 @@ scot <- UK[which(UK$NAME=="Scotland Euro Region"),]
 #plot(scot)
 
 dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
-predH1 <- predict(rsmax1, dredge2, re.form=NA, type='response') #whittet.mod2 #dredge1
-predH1a <- dredge2 %>% augment(type.predict='response')
-predH1a <- augment(dredge2,newdata = rsmax1)
-predH1<- exp(predH1)
-summary(predH1)
+#predH1 <- predict(rsmax1, dredge2, re.form=NA, type='response') #whittet.mod2 #dredge1
+#predH1a <- dredge2 %>% augment(type.predict='response')
+#predH1a <- augment(dredge2,newdata = rsmax1)
+#predH1<- exp(predH1)
+#summary(predH1)
 #predH1[is.na(predH1)] <- 0
 #predH1[predH1==1.030127e+25]<-0
-predH1_crop <- crop(predH1, scot)
-plot(predH1_crop, main="Tree height predicted (30yr avg climate) (dredge2)")
+#predH1_crop <- crop(predH1, scot)
+#plot(predH1_crop, main="Tree height predicted (30yr avg climate) (dredge2)")
 
 #crs(predH1_crop)<- "+init=epsg:27700" # british national grid
 # palette
