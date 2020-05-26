@@ -363,17 +363,22 @@ Figures \@ref(fig:DTSDM1) and \@ref(fig:DTSDM1a) show predicted height distribut
 #plot(rsmax1, main="Raster stack for model input")
 
 #crs(predH)<- "+init=epsg:27700" # british national grid
-#UK <- shapefile(paste0(wd,"Scots_pine/european_region_region.shp")) # PC
-UK <- shapefile(paste0(wd,"data-raw/european_region_region.shp")) # mac
+UK <- shapefile(paste0(wd,"Scots_pine/european_region_region.shp")) # PC
+#UK <- shapefile(paste0(wd,"data-raw/european_region_region.shp")) # mac
 #unique(UK$NAME)
 scot <- UK[which(UK$NAME=="Scotland Euro Region"),]
 #plot(scot)
 
 dredge2<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
-#predH1 <- predict(rsmax1, dredge2, re.form=NA, type='response') #whittet.mod2 #dredge1
-#predH1<- exp(predH1)
-#predH1_crop <- crop(predH1, scot)
-#plot(predH1_crop, main="Tree height predicted (30yr avg climate) (dredge2)")
+predH1 <- predict(rsmax1, dredge2, re.form=NA, type='response') #whittet.mod2 #dredge1
+predH1a <- dredge2 %>% augment(type.predict='response')
+predH1a <- augment(dredge2,newdata = rsmax1)
+predH1<- exp(predH1)
+summary(predH1)
+#predH1[is.na(predH1)] <- 0
+#predH1[predH1==1.030127e+25]<-0
+predH1_crop <- crop(predH1, scot)
+plot(predH1_crop, main="Tree height predicted (30yr avg climate) (dredge2)")
 
 #crs(predH1_crop)<- "+init=epsg:27700" # british national grid
 # palette
@@ -381,7 +386,7 @@ vir <- viridis(5)
 #mag <- magma(5)
 
 #tm1<-tm_shape(predH1_crop) +
-  #tm_raster(title="Predicted height (exp)",
+  #tm_raster(title="Predicted height (mm)",
             #palette=vir,
             #style="quantile") +
   #tm_legend(outside = TRUE,
@@ -412,7 +417,7 @@ dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + sc
 #crs(predH2_crop)<- "+init=epsg:27700" # british national grid
 
 #tm2<-tm_shape(predH2_crop) +
-  #tm_raster(title="Predicted height (exp)",
+  #tm_raster(title="Predicted height (mm)",
             #palette=vir,
             #style="quantile") +
   #tm_legend(outside = TRUE,
@@ -483,7 +488,7 @@ dredge3<-lmer(log(W17Height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + sc
 #crs(predH3_crop)<- "+init=epsg:27700" # british national grid
 
 #tm3<-tm_shape(predH3_crop) +
-  #tm_raster(title="Predicted height (exp)",
+  #tm_raster(title="Predicted height (mm)",
             #palette=vir,
             #style="quantile") +
   #tm_legend(outside = TRUE,
@@ -519,7 +524,7 @@ These results were then masked using the current distribution of Scots pine take
 #plot(predH_mask, main="Tree height prediction within Scots pine range for current climatic conditions")
 
 #tm3a<-tm_shape(predH_mask) +
-  #tm_raster(title="Predicted height (exp)",
+  #tm_raster(title="Predicted height (mm)",
             #palette=vir,
             #style="quantile") +
   #tm_legend(outside = TRUE,
@@ -578,7 +583,7 @@ Predicted height appears to increase overall (although be aware of scaled data a
 #classIntervals(values(predH4_crop[["layer"]]), n=5, style = "quantile")
 
 #tm4<-tm_shape(predH4_crop) +
-  #tm_raster(title="Predicted height (exp)",
+  #tm_raster(title="Predicted height (mm)",
             #palette=vir,
             #style="quantile") +
   #tm_legend(outside = TRUE,
