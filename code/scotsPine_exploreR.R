@@ -97,34 +97,31 @@ plasticity <- sp.raw %>%
 plasticity
 # visualise
 bxp <- ggboxplot(
-  sp.raw, x = "Provenance", y = "H",
-  color = "Trial", palette = "jco"
-)
+  sp.raw, x = "Trial", y = "H",
+  color = "Provenance")
 bxp
 
 # outliers
 outliers2 <- sp.raw %>%
-  group_by(Trial, Provenance) %>%
+  group_by(Provenance, Trial) %>%
   identify_outliers(H)
 # some extreme outliers
 outliers2 %>% filter(is.extreme==TRUE)
 
-outliers3 <- outliers2 %>% filter(is_extreme==TRUE)
-
 # check normality
 # Build the linear model
-model2  <- lm(H ~ Trial*Provenance,
+model2  <- lm(H ~ Provenance*Trial,
              data = sp.raw)
 # Create a QQ plot of residuals
 ggqqplot(residuals(model2))
 # Compute Shapiro-Wilk test of normality
 shapiro_test(residuals(model2))
 ggqqplot(sp.raw, "H", ggtheme = theme_bw()) +
-  facet_grid(Trial ~ Provenance)
+  facet_grid(Provenance ~ Trial)
 # not normal
 
 # try anova anyway
-res.aov3 <- sp.raw %>% anova_test(H ~ Trial * Provenance)
+res.aov3 <- sp.raw %>% anova_test(H ~ Provenance * Trial)
 res.aov3
 # There is a statistically significant interaction between Provenance and Trial for height,
 # F(40, 1729) = 1.791, p = <0.05.
@@ -135,14 +132,14 @@ res.aov3
 # pairwise comparisons (between provenances)
 library(emmeans)
 pwc2 <- sp.raw %>% 
-  group_by(Trial) %>%
-  emmeans_test(H ~ Provenance, p.adjust.method = "bonferroni") 
+  group_by(Provenance) %>%
+  emmeans_test(H ~ Trial, p.adjust.method = "bonferroni") 
 pwc2
-# no significant differences between provenances == no intra-specific genetic variability?
+# some significant differences between provenances
 
 emeans <- sp.raw %>% 
   emmeans_test(
-    H ~ Provenance, p.adjust.method = "bonferroni",
+    H ~ Trial, p.adjust.method = "bonferroni",
     model = model2
   )
 summary(emeans)
@@ -154,4 +151,32 @@ bxp +
   labs(
     subtitle = get_test_label(res.aov3, detailed = T),
     caption = get_pwc_label(pwc2)
+  )
+
+# kruskal-wallis2
+# compute Kruskal-Wallis
+# explicitly nest
+sp.raw <- sp.raw %>% mutate(TP=Provenance:Trial)
+res.kruskal2 <- sp.raw %>% kruskal_test(H ~ TP)
+res.kruskal2
+sp.raw %>% kruskal_effsize(H ~ TP)
+# significant differences
+# large effect size of trial:provenance (0.21)
+
+# A significant Kruskal-Wallis test is generally followed up by Dunn’s test to identify which groups are different.
+# Pairwise comparisons
+pwc3 <- sp.raw %>% 
+  dunn_test(H ~ TP, p.adjust.method = "bonferroni") 
+pwc3
+
+# There was a statistically significant differences between (some) provenances within trials 
+# Pairwise Wilcoxon test between groups showed that difference between (some) provenances within trials were significant)
+
+# visualise: box plots with p-values
+pwc3 <- pwc3 %>% add_xy_position(x = "TP")
+ggboxplot(sp.raw, x = "TP", y = "H") +
+  stat_pvalue_manual(pwc3, hide.ns = TRUE) +
+  labs(
+    subtitle = get_test_label(res.kruskal2, detailed = TRUE),
+    caption = get_pwc_label(pwc3)
   )
