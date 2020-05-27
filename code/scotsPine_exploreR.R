@@ -24,7 +24,7 @@ sp.trial <- sp.raw %>%
 ggboxplot(sp.raw, x="Trial", y="height")
 
 # both
-sp.raw <- sp.raw %>% mutate(TrialProv=Trial:ID1)
+sp.raw <- sp.raw %>% mutate(TrialProv=Trial:Provenance)
 sp.tp <- sp.raw %>%
   group_by(TrialProv) %>%
   get_summary_stats(height, type = "mean_sd")
@@ -35,9 +35,17 @@ outliers <- sp.raw %>%
   group_by(ID1) %>%
   identify_outliers(height) # no extreme outliers
 
+out_ids <- unique(outliers$id)
+
+sp.nout <- sp.raw[ ! sp.raw$id %in% out_ids, ]
+sp.tp2 <- sp.nout %>%
+  group_by(TrialProv) %>%
+  get_summary_stats(height, type = "mean_sd")
+ggboxplot(sp.nout, x = "TrialProv", y = "height")
+
 # check normality by examining residuals
 # Build the linear model
-model  <- lm(height ~ ID1, data = sp.raw)
+model  <- lm(height ~ ID1, data = sp.nout)
 # Create a QQ plot of residuals
 ggqqplot(residuals(model))
 # Compute Shapiro-Wilk test of normality
@@ -47,90 +55,88 @@ shapiro_test(residuals(model))
 # my data is not normal...
 
 # check normality by group
-shapiro <- sp.raw %>%
+shapiro <- sp.nout %>%
   group_by(ID1) %>%
   shapiro_test(height)
-ggqqplot(sp.raw, "height", facet.by = "ID1")
+ggqqplot(sp.nout, "height", facet.by = "ID1")
 
 # if not normal, use kruskal-wallis
-
 # plot residuals vs fit
-plot(model, 1)
+#plot(model, 1)
 # if no obvious relationship, then ok
 
 # compute ANOVA
-res.aov1 <- sp.raw %>% anova_test(height ~ ID1)
+#res.aovP <- sp.nout %>% anova_test(height ~ ID1)
 # the column ges corresponds to the generalized eta squared (effect size). 
 # It measures the proportion of the variability in the outcome variable (here plant height) 
 # that can be explained in terms of the predictor (here, provenance).
 # An effect size of 0.015 (1.5%) means that 1.5% of the change in the height can be accounted for by provenance
 
 # repeat for trial
-res.aov2 <- sp.raw %>% anova_test(height ~ Trial)
+#res.aovT <- sp.nout %>% anova_test(height ~ Trial)
 # 12% change can be accounted for by trial
 
 # compute Kruskal-Wallis
-res.kruskal1 <- sp.raw %>% kruskal_test(height ~ ID1)
-res.kruskal1
-sp.raw %>% kruskal_effsize(height ~ ID1)
-# no significant differences between provenances
-res.kruskal2 <- sp.raw %>% kruskal_test(height ~ Trial)
-res.kruskal2
-sp.raw %>% kruskal_effsize(height ~ Trial)
-# large effect size of trial (0.19)
+res.kruskalP <- sp.nout %>% kruskal_test(height ~ ID1)
+res.kruskalP
+sp.nout %>% kruskal_effsize(height ~ ID1)
+# no significant differences between provenances with outliers, but when outliers are removed, there is a small significant effect (0.13)
+res.kruskalT <- sp.nout %>% kruskal_test(height ~ Trial)
+res.kruskalT
+sp.nout %>% kruskal_effsize(height ~ Trial)
+# large effect size of trial (0.21)
 
 # A significant Kruskal-Wallis test is generally followed up by Dunn’s test to identify which groups are different.
 # Pairwise comparisons
-pwc <- sp.raw %>% 
+pwcT <- sp.nout %>% 
   dunn_test(height ~ Trial, p.adjust.method = "bonferroni") 
-pwc
-
-# There was a statistically significant differences between trials 
+pwcT
+# there is a statistically significant differences between trials 
 # as assessed using the Kruskal-Wallis test (p = <0.0001). 
 # Pairwise Wilcoxon test between groups showed that difference between trials were significant (p = <0.0001)
 
 # visualise: box plots with p-values
-pwc <- pwc %>% add_xy_position(x = "Trial")
-ggboxplot(sp.raw, x = "Trial", y = "height") +
-  stat_pvalue_manual(pwc, hide.ns = TRUE) +
+pwcT <- pwcT %>% add_xy_position(x = "Trial")
+ggboxplot(sp.nout, x = "Trial", y = "height") +
+  stat_pvalue_manual(pwcT, hide.ns = TRUE) +
   labs(
-    subtitle = get_test_label(res.kruskal2, detailed = TRUE),
-    caption = get_pwc_label(pwc)
+    subtitle = get_test_label(res.kruskalT, detailed = TRUE),
+    caption = get_pwc_label(pwcT)
   )
 
+# data not normal so don't use ANOVA
 # two-way ANOVA
-plasticity <- sp.raw %>%
-  group_by(Trial, Provenance) %>%
-  get_summary_stats(height, type = "mean_sd")
-plasticity
+#plasticity <- sp.nout %>%
+  #group_by(Trial, Provenance) %>%
+  #get_summary_stats(height, type = "mean_sd")
+#plasticity
 # visualise
 bxp <- ggboxplot(
-  sp.raw, x = "Trial", y = "height",
+  sp.nout, x = "Trial", y = "height",
   color = "Provenance")
 bxp
 
 # outliers
-outliers2 <- sp.raw %>%
-  group_by(Provenance, Trial) %>%
-  identify_outliers(height)
+#outliers2 <- sp.nout %>%
+  #group_by(Provenance, Trial) %>%
+  #identify_outliers(height)
 # some extreme outliers
-outliers2 %>% filter(is.extreme==TRUE)
+#outliers2 %>% filter(is.extreme==TRUE)
 
 # check normality
-# Build the linear model
-model2  <- lm(height ~ Provenance*Trial,
-             data = sp.raw)
+# Build the linear model with interactions between Trial and Provenance
+model_int  <- lm(height ~ Trial*Provenance,
+             data = sp.nout)
 # Create a QQ plot of residuals
-ggqqplot(residuals(model2))
+ggqqplot(residuals(model_int)) # not normal
 # Compute Shapiro-Wilk test of normality
-shapiro_test(residuals(model2))
-ggqqplot(sp.raw, "height", ggtheme = theme_bw()) +
-  facet_grid(Provenance ~ Trial)
+shapiro_test(residuals(model_int))
+ggqqplot(sp.nout, "height", ggtheme = theme_bw()) +
+  facet_grid(Trial ~ Provenance)
 # not normal
-
-# try anova anyway
-res.aov3 <- sp.raw %>% anova_test(height ~ Provenance * Trial)
-res.aov3
+# so don't use anova
+#res.aovTP <- sp.nout %>% anova_test(height ~ Provenance * Trial)
+#res.aovTP
 # There is a statistically significant interaction between Provenance and Trial for height,
 # F(40, 1729) = 1.791, p = <0.05.
 # A significant two-way interaction indicates that the impact that one factor (e.g., Provenance) 
@@ -139,50 +145,42 @@ res.aov3
 
 # pairwise comparisons (between provenances)
 library(emmeans)
-pwc2 <- sp.raw %>% 
-  group_by(Provenance) %>%
-  emmeans_test(height ~ Trial, p.adjust.method = "bonferroni") 
-pwc2
-# some significant differences between provenances
+pwcP <- sp.nout %>% 
+  group_by(Trial) %>%
+  emmeans_test(height ~ Provenance, p.adjust.method = "bonferroni") 
+pwcP
+# some significant differences between provenances, but mostly non-significant
 
-emeans <- sp.raw %>% 
+emeans <- sp.nout %>% 
   emmeans_test(
-    height ~ Trial, p.adjust.method = "bonferroni",
-    model = model2
+    height ~ Provenance, p.adjust.method = "bonferroni",
+    model = model_int
   )
 summary(emeans)
-emeans$p.adj.signif
-
-pwc2 <- pwc2 %>% add_xy_position(x = "Trial")
-bxp +
-  stat_pvalue_manual(pwc2) +
-  labs(
-    subtitle = get_test_label(res.aov3, detailed = T),
-    caption = get_pwc_label(pwc2)
-  )
+emeans$p.adj.signif # most non-significant but some significant differences
 
 # kruskal-wallis2
 # compute Kruskal-Wallis
-res.kruskal2 <- sp.raw %>% kruskal_test(height ~ TrialProv)
-res.kruskal2
-sp.raw %>% kruskal_effsize(height ~ TrialProv)
-# significant differences
-# large effect size of trial:provenance (0.21)
+res.kruskalTP <- sp.nout %>% kruskal_test(height ~ TrialProv)
+res.kruskalTP
+sp.nout %>% kruskal_effsize(height ~ TrialProv)
+# significant differences p<0.0001
+# large effect size of trial:provenance (0.25)
 
 # A significant Kruskal-Wallis test is generally followed up by Dunn’s test to identify which groups are different.
 # Pairwise comparisons
-pwc3 <- sp.raw %>% 
+pwcTP <- sp.nout %>% 
   dunn_test(height ~ TrialProv, p.adjust.method = "bonferroni") 
-pwc3
-
-# There was a statistically significant differences between (some) provenances within trials 
+pwcTP
+# there is a statistically significant differences between (some) provenances within trials 
 # Pairwise Wilcoxon test between groups showed that difference between (some) provenances within trials were significant)
 
 # visualise: box plots with p-values
-pwc3 <- pwc3 %>% add_xy_position(x = "TrialProv")
-ggboxplot(sp.raw, x = "TrialProv", y = "height") +
-  stat_pvalue_manual(pwc3, hide.ns = TRUE) +
+pwcTP <- pwcTP %>% add_xy_position(x = "TrialProv")
+ggboxplot(sp.nout, x = "TrialProv", y = "height") +
+  coord_flip()+
+  stat_pvalue_manual(pwcTP, hide.ns = TRUE) +
   labs(
-    subtitle = get_test_label(res.kruskal2, detailed = TRUE),
-    caption = get_pwc_label(pwc3)
+    subtitle = get_test_label(res.kruskalTP, detailed = TRUE),
+    caption = get_pwc_label(pwcTP)
   )
