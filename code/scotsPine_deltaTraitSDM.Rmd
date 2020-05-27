@@ -1,7 +1,8 @@
 ---
 title: "Applying the DeltaTraitSDM to a multi-site provenance trial of native Scots pine (_Pinus sylvestris_)"
-author: V. Burton
-output: bookdown::html_document2  
+output: 
+  prettydoc::html_pretty:
+    theme: architect
     
 ---
 
@@ -72,7 +73,7 @@ The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates
 library(ggpubr) # publication ready plots
 ggboxplot(
   sp.raw, x = "Trial", y = "height",
-  color = "Provenance", palette = "ucscgb")
+  color = "Provenance", palette = "viridis")
 
 ```
 
@@ -139,51 +140,47 @@ dredge2 = Height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T 
 dredge3 = Height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
 
 
-```{r cross-validation, include=FALSE}
-results<-NULL
+```{r cross-validation, include=FALSE, fig.cap="Cross validaton results"}
+#results<-NULL
 
-for(i in 1:1000) {
+#for(i in 1:1000) {
   
   #i<-1
-  rows<-sample(x=1:nrow(sp.raw),size=round(nrow(sp.raw)*0.25,1))
-  training<-sp.raw[-rows,]
-  testing<-sp.raw[rows,]
+  #rows<-sample(x=1:nrow(sp.raw),size=round(nrow(sp.raw)*0.25,1))
+  #training<-sp.raw[-rows,]
+  #testing<-sp.raw[rows,]
   
-  training<-na.omit(training)
-  testing<-na.omit(testing)
+  #training<-na.omit(training)
+  #testing<-na.omit(testing)
   
-  dredge3<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = training)
-  dredge2<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = training)
-  whittet.mod3 <- lmer(log(height) ~ scale(DD5_T) + scale(MWMT_P) + scale(MCMT_T) + scale(MAP_T) + scale(TD_P) + scale(DD5_T)*scale(MWMT_P) + (1|Trial/Block/Provenance), data = training)
-  pair.mod2 <- lmer(log(height) ~ scale(MWMT_P) + scale(PAS_T) + scale(MWMT_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=training)
-  diff.mod3 <- lmer(log(height) ~ scale(DD0_P) + scale(PAS_T) + scale(DD0_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=training)
+  #dredge3<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = training)
+  #dredge2<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = training)
+  #whittet.mod3 <- lmer(log(height) ~ scale(DD5_T) + scale(MWMT_P) + scale(MCMT_T) + scale(MAP_T) + scale(TD_P) + scale(DD5_T)*scale(MWMT_P) + (1|Trial/Block/Provenance), data = training)
+  #pair.mod2 <- lmer(log(height) ~ scale(MWMT_P) + scale(PAS_T) + scale(MWMT_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=training)
+  #diff.mod3 <- lmer(log(height) ~ scale(DD0_P) + scale(PAS_T) + scale(DD0_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=training)
 
-  p.d3<-predict(dredge3,testing)-log(testing$height)
-  p.d2<-predict(dredge2,testing)-log(testing$height)
-  p.wh3<-predict(whittet.mod3,testing)-log(testing$height)
-  p.pr2<-predict(pair.mod2,testing)-log(testing$height)
-  p.df3<-predict(diff.mod3,testing)-log(testing$height)
+  #p.d3<-predict(dredge3,testing)-log(testing$height)
+  #p.d2<-predict(dredge2,testing)-log(testing$height)
+  #p.wh3<-predict(whittet.mod3,testing)-log(testing$height)
+  #p.pr2<-predict(pair.mod2,testing)-log(testing$height)
+  #p.df3<-predict(diff.mod3,testing)-log(testing$height)
   
-  results<-rbind(results,data.frame(
-  Run=rep(i,5),
-    Model=c('dredge3','dredge2','whittet.mod3','pair.mod2','diff.mod3'),
-    MAE=c(mean(abs(p.d3)),mean(abs(p.d2)),mean(abs(p.wh3)),mean(abs(p.pr2)),mean(abs(p.df3))),
-    R2marg=c(r2(dredge3)$R2_marginal, r2(dredge2)$R2_marginal,r2(whittet.mod3)$R2_marginal,
-             r2(pair.mod2)$R2_marginal,r2(diff.mod3)$R2_marginal)))
+  #results<-rbind(results,data.frame(
+  #Run=rep(i,5),
+    #Model=c('dredge3','dredge2','whittet.mod3','pair.mod2','diff.mod3'),
+    #MAE=c(mean(abs(p.d3)),mean(abs(p.d2)),mean(abs(p.wh3)),mean(abs(p.pr2)),mean(abs(p.df3))),
+    #R2marg=c(r2(dredge3)$R2_marginal, r2(dredge2)$R2_marginal,r2(whittet.mod3)$R2_marginal,
+             #r2(pair.mod2)$R2_marginal,r2(diff.mod3)$R2_marginal)))
   
-}
+#}
 
-#write.csv(results, paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv'))
+#write.csv(results, paste0(wd,'Scots_pine/cross-validation_results_interactions3.csv'))
 
 ```
 
 
 ```{r cv-results, include=T, echo=FALSE, warning=FALSE}
-#results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions2.csv')) # PC
-#results<-read.csv(paste0(wd,'data-raw/cross-validation_results_interactions2.csv')) # mac
-#summary(results)
-#hist(results$MAE,breaks=50)
-#hist(results$R2marg,breaks=50)
+results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions3.csv')) # PC
 
 results %>% 
   ggplot(aes(Model,MAE, colour=Model))+geom_boxplot()+
@@ -215,28 +212,30 @@ dredge2 = Height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T 
 
 dredge3 = Height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
 
-Their summaries are shown below:
+Their table summaries and descriptions are shown below:
 
-```{r dredge2, include=TRUE, echo=TRUE, warning=FALSE}
+```{r dredge2, include=TRUE, echo=FALSE, warning=FALSE}
 
 dredge2<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
 
-results <- report(dredge2, ci= 95)
-d2_df<-as.data.frame(table_short(results))
+res_d2 <- report(dredge2, ci= 95)
+#d2_df<-as.data.frame(table_short(results))
 #write.csv(d2_df, "Scots_pine/dredge2_results.csv")
-text_short(results)
+table_short(res_d2)
+text_short(res_d2)
 
 ```
 
 
-```{r dredge3, include=TRUE, echo=TRUE, warning=FALSE}
+```{r dredge3, include=TRUE, echo=FALSE, warning=FALSE}
 
 dredge3<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
 
-results <- report(dredge3, ci= 95)
-d3_df<-table_short(results)
+res_d3 <- report(dredge3, ci= 95)
+#d3_df<-table_short(results)
 #write.csv(d3_df, "Scots_pine/dredge3_results.csv")
-text_short(results)
+table_short(res_d3)
+text_short(res_d3)
 
 ```
 
@@ -354,7 +353,7 @@ scot <- UK[which(UK$NAME=="Scotland Euro Region"),]
 predH1 <- predict(rsmax1, dredge2, re.form=NA, type='response') #whittet.mod2 #dredge1
 #predH1a <- dredge2 %>% augment(type.predict='response')
 #predH1a <- augment(dredge2,newdata = rsmax1)
-plot(predH1)
+#plot(predH1)
 predH1<- exp(predH1)
 #summary(predH1)
 #predH1[is.na(predH1)] <- 0
@@ -484,15 +483,18 @@ tm3
 #tmap_save(tm3, filename = paste0(wd,"figures/sp_predH_07-12_dredge3.png"))
 #knitr::include_graphics(paste0(wd,'figures/sp_predH_07-12_dredge3.png'))
 
+```
+
+```{r difference, include=TRUE, echo=FALSE, fig.cap="Difference between prediction based on climate normal period vs. 2007 and 2012 climate"}
 # check difference
 diff<- predH2_crop - predH3_crop
 comp<-stack(predH2_crop,predH3_crop,diff)
 names(comp) <- c("predH2_30yr_avg","predH3_2007_2012","difference")
 plot(comp)
-
 ```
 
-By using separate rasters for the seed collection and planting years (Figure \@ref(fig:DTSDM2)) the future height prediction is constrained to a smaller area and predicted lower height overall.
+
+By using separate rasters for the seed collection and planting years (Figures \@ref(fig:DTSDM2) and \@ref(fig:difference)) the future height prediction is constrained to a smaller area and predicts lower height overall.
 
 The more accurate/constrained predictions using 2007 and 2012 climate data were then masked using the current distribution of Scots pine taken from the Native Woodland Survey Scotland (Figure \@ref(fig:current-dist)).
 
