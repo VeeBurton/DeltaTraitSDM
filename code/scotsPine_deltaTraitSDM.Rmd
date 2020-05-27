@@ -1,8 +1,8 @@
 ---
 title: "Applying the DeltaTraitSDM to a multi-site provenance trial of native Scots pine (_Pinus sylvestris_)"
 output: 
-  prettydoc::html_pretty:
-    theme: architect
+  bookdown::html_document2:
+    theme: lumen
     
 ---
 
@@ -78,7 +78,7 @@ ggboxplot(
 ```
 
 Outliers in the data were removed, and checks for normality carried out. As the data is not normal, a Kruskal Wallis test was used to check for significant differences between the mean height of each provenance within each trial.
-This showed that there are statistically significant differences between provenances and trials (effect size 0.25, p<0.0001), illustrating thate there is both intra-specific genetic variability and phenotypic plasticity in the sample.
+This showed that there are statistically significant differences between provenances within trials (effect size 0.25, p<0.0001), illustrating thate there is both intra-specific genetic variability and phenotypic plasticity in the sample.
 
 ## Compare model performance
 
@@ -131,7 +131,7 @@ knitr::kable(head(compare.mods[,1:9],15), booktabs=TRUE,
 
 Using the five 'best' models from the comparisons above, cross-validation was carried out. 
 This involves splitting the dataset into ‘training’ and ‘testing’ samples, fitting each model repeatedly (1000 iterations), and recording the mean absolute error (MAE) and R2 marginal from each run.
-The results of the cross validation (Figure \@ref(fig:cross-validation)) indicate that "dredge2" and "dredge3" have the highest R2 marginal. Both also showed the lowest MAE.
+The results of the cross validation (Figure \@ref(fig:cross-validation)) indicate that "dredge2" and "dredge3" have the highest average R2 marginal. Both also showed the lowest average MAE.
 These two models were therefore taken forwards to be tested within the ΔTraitSDM framework.
 The two models took the forms:
 
@@ -202,15 +202,6 @@ results %>%
 #resAVE<-resAVE[order(resAVE[,2],decreasing=F),]
 
 ```
-
-The results of the cross validation indicate that "dredge2" and "dredge3" have the highest average R2 marginal.
-Both also showed the lowest average Mean Absolute Error (MAE).
-These two models were therefore taken forwards to be tested within the DeltaTraitSDM framework.
-The two models took the forms:
-
-dredge2 = Height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T + (1|Trial/Block/Provenance)
-
-dredge3 = Height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
 
 Their table summaries and descriptions are shown below:
 
@@ -415,7 +406,7 @@ tm2
 
 ```
 
-Text here considering outputs from 30yr average climate data above.
+
 
 ```{r DTSDM2, include=T, echo=F, warning=FALSE, fig.cap="Height predicted using climate data from seed collection and planting years"}
 
