@@ -87,24 +87,25 @@ Table \@ref(tab:model-performance) shows a ranked comparison of model metrics fo
 
 ```{r model-performance, include=TRUE, warning=FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="A comparison plot of several models"}
 
+sp <- sp %>% mutate(TrialProvFam=factor(Trial):factor(Provenance):factor(Family))
 # initial models
-pair.mod1 <- lmer(height ~ scale(MWMT_T) + scale(PAS_P) + scale(MWMT_T)*scale(PAS_P) + (1|Trial/Block/Provenance), data=sp.raw)
-pair.mod2 <- lmer(log(height) ~ scale(MWMT_P) + scale(PAS_T) + scale(MWMT_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=sp.raw)
-pair.mod3 <- lmer(log(height) ~ scale(TD_P) + scale(Eref_T) + scale(TD_P)*scale(Eref_T) + (1|Trial/Block/Provenance), data=sp.raw)
-pca.mod1 <- lmer(log(height) ~ scale(DD_18_T) + scale(FFP_P) + scale(DD_18_T)*scale(FFP_P) + (1|Trial/Block/Provenance), data=sp.raw)
-pca.mod2 <- lmer(log(height) ~ scale(DD_18_T) + scale(TD_P) + scale(DD_18_T)*scale(TD_P) + (1|Trial/Block/Provenance), data=sp.raw)
-pca.mod3 <- lmer(log(height) ~ scale(FFP_T) + scale(TD_P) + scale(FFP_T)*scale(TD_P) + (1|Trial/Block/Provenance), data=sp.raw)
-diff.mod1 <- lmer(log(height) ~ scale(PAS_P) + TD_T + scale(PAS_P)*TD_T + (1|Trial/Block/Provenance), data=sp.raw)
-diff.mod2 <- lmer(log(height) ~ scale(MWMT_P) + scale(MCMT_T) + scale(MWMT_P)*scale(MCMT_T) + (1|Trial/Block/Provenance), data=sp.raw)
-diff.mod3 <- lmer(log(height) ~ scale(DD0_P) + scale(PAS_T) + scale(DD0_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=sp.raw)
+pair.mod1 <- lmer(log(height) ~ MWMT_T + PAS_T + MWMT_T*PAS_T + (1|TrialProvFam), data=sp)
+pair.mod2 <- lmer(log(height) ~ MWMT_T + PAS_T + MWMT_T*PAS_T + (1|TrialProvFam), data=sp)
+pair.mod3 <- lmer(log(height) ~ TD_T + Eref_T + TD_T*Eref_T + (1|TrialProvFam), data=sp)
+pca.mod1 <- lmer(log(height) ~ DD_18_T + FFP_T + DD_18_T*FFP_T + (1|TrialProvFam), data=sp)
+pca.mod2 <- lmer(log(height) ~ DD_18_T + TD_T + DD_18_T*TD_T + (1|TrialProvFam), data=sp)
+pca.mod3 <- lmer(log(height) ~ FFP_T + TD_T + FFP_T*TD_T + (1|TrialProvFam), data=sp)
+diff.mod1 <- lmer(log(height) ~ PAS_T + TD_T + PAS_T*TD_T + (1|TrialProvFam), data=sp)
+diff.mod2 <- lmer(log(height) ~ MWMT_T + MCMT_T + MWMT_T*MCMT_T + (1|TrialProvFam), data=sp)
+diff.mod3 <- lmer(log(height) ~ DD0_T + PAS_T + DD0_T*PAS_T + (1|TrialProvFam), data=sp)
 # "best models" from dredge )
-dredge1<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(DD_18_T)*NFFD_P + (1|Trial/Block/Provenance),data = sp.raw)
-dredge2<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = sp.raw)
-dredge3<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+dredge1<-lmer(log(height) ~ DD_18_T + NFFD_T + DD_18_T*NFFD_P + (1|TrialProvFam),data = sp)
+dredge2<-lmer(log(height) ~ DD_18_T + NFFD_T + PAS_T + DD_18_T*NFFD_T + NFFD_T*PAS_T + (1|TrialProvFam),data = sp)
+dredge3<-lmer(log(height) ~ DD_18_T + NFFD_T + TD_T + DD_18_T*NFFD_T + NFFD_T*TD_T+ (1|TrialProvFam),data = sp)
 # from richard's thesis
-whittet.mod1 <- lmer(log(height) ~ scale(MAP_T) + scale(FFP_P) + scale(MAP_T)*scale(FFP_P) + (1|Trial/Block/Provenance), data = sp.raw)
-whittet.mod2 <- lmer(log(height) ~ scale(MAP_P) + scale(FFP_T) + scale(MAP_P)*scale(FFP_T) + (1|Trial/Block/Provenance), data = sp.raw)
-whittet.mod3 <- lmer(log(height) ~ scale(DD5_T) + scale(MWMT_P) + scale(MCMT_T) + scale(MAP_T) + scale(TD_P) + scale(DD5_T)*scale(MWMT_P) + (1|Trial/Block/Provenance), data = sp.raw)
+whittet.mod1 <- lmer(log(height) ~ MAP_T + FFP_T + MAP_T*FFP_T + (1|TrialProvFam), data = sp)
+whittet.mod2 <- lmer(log(height) ~ MAP_T + FFP_T + MAP_T*FFP_T + (1|TrialProvFam), data = sp)
+whittet.mod3 <- lmer(log(height) ~ DD5_T + MWMT_T + MCMT_T + MAP_T + TD_T + DD5_T*MWMT_T + (1|TrialProvFam), data = sp)
 
 compare.mods <- compare_performance(pair.mod1, pair.mod2,pair.mod3,
                                     pca.mod1,pca.mod2,pca.mod3,
@@ -135,9 +136,9 @@ The results of the cross validation (Figure \@ref(fig:cross-validation)) indicat
 These two models were therefore taken forwards to be tested within the ΔTraitSDM framework.
 The two models took the forms:
 
-dredge2 = Height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T + (1|Trial/Block/Provenance)
+dredge2 = height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T + (1|Trial/Block/Provenance)
 
-dredge3 = Height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
+dredge3 = height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
 
 
 ```{r cross-validation, include=FALSE, fig.cap="Cross validaton results"}
@@ -317,7 +318,7 @@ gridded(climate) <- TRUE
 
 Figures \@ref(fig:DTSDM1) and \@ref(fig:DTSDM1a) show predicted height distribution for the current climate using the 30yr average climate 'normal' for two models.
 
-```{r DTSDM1, include=TRUE, echo=FALSE, warning=FALSE, fig.cap="Height predicted using 30yr average normal climate (dredge2)"}
+```{r DTSDM1, include=TRUE, echo=FALSE, warning=FALSE, fig.cap="height predicted using 30yr average normal climate (dredge2)"}
 
 DD_18_T <- raster(climate,layer='DD_18')
 NFFD_P <- raster(climate,layer="NFFD")
@@ -375,7 +376,7 @@ tm1
 
 ```
 
-```{r DTSDM1a, include=TRUE, echo=FALSE, warning=FALSE, fig.cap="Height predicted using 30yr average normal climate (dredge3"}
+```{r DTSDM1a, include=TRUE, echo=FALSE, warning=FALSE, fig.cap="height predicted using 30yr average normal climate (dredge3"}
 
 rsmax2 <- stack(ST_H, DD_18_T, NFFD_P, TD_T) 
 names(rsmax2)= c("height","DD_18_T","NFFD_P", "TD_T")
@@ -408,7 +409,7 @@ tm2
 
 
 
-```{r DTSDM2, include=T, echo=F, warning=FALSE, fig.cap="Height predicted using climate data from seed collection and planting years"}
+```{r DTSDM2, include=T, echo=F, warning=FALSE, fig.cap="height predicted using climate data from seed collection and planting years"}
 
 #########################################################################
 # process rasters for planting year (T) and when seeds were harvested (P)
