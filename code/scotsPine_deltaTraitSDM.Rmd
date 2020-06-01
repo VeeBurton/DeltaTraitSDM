@@ -75,10 +75,13 @@ The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates
 
 ```{r boxplot, include=T,echo=F,fig.cap="Boxplot"}
 
-library(ggpubr) # publication ready plots
-ggboxplot(
-  sp.raw, x = "Trial", y = "height",
-  color = "Provenance", palette = "viridis")
+sp <- sp %>% mutate(TrialProvFam=factor(Trial):factor(Provenance):factor(Family))
+sp <- sp %>% mutate(ProvFam=factor(Provenance):factor(Family))
+
+ggplot(sp)+
+  geom_boxplot(aes(ProvFam,height,colour=ProvFam))+
+  facet_wrap(~Trial)+
+  theme(legend.position = "none")
 
 ```
 
@@ -93,7 +96,6 @@ Table \@ref(tab:model-performance) shows a ranked comparison of model metrics fo
 
 ```{r model-performance, include=TRUE, warning=FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="A comparison plot of several models"}
 
-sp <- sp %>% mutate(TrialProvFam=factor(Trial):factor(Provenance):factor(Family))
 # initial models
 pair.mod1 <- lmer(log(height) ~ MWMT_T + PAS_T + MWMT_T*PAS_T + (1|TrialProvFam), data=sp)
 #pair.mod2 <- lmer(log(height) ~ MWMT_T + PAS_T + MWMT_T*PAS_T + (1|TrialProvFam), data=sp)
