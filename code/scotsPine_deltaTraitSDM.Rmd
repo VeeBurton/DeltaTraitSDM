@@ -64,6 +64,11 @@ outliers <- sp.raw %>%
 out_ids <- unique(outliers$id)
 sp.raw <- sp.raw[ ! sp.raw$id %in% out_ids, ]
 
+# scale and centre explanatory variables
+sp <- sp.raw
+sp[,16:55] <- scale(sp.raw[,16:55], scale = TRUE, center = TRUE)
+sp$DD18_T <- NULL
+
 ```
 
 The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates that there is variation in height between trials, and also within trials according to provenance. So there is value in fitting a mixed-effects model to explore height, with the random effects structure taking account of the different trials and provenances.
@@ -77,8 +82,9 @@ ggboxplot(
 
 ```
 
-Outliers in the data were removed, and checks for normality carried out. As the data is not normal, a Kruskal Wallis test was used to check for significant differences between the mean height of each provenance within each trial.
-This showed that there are statistically significant differences between provenances within trials (effect size 0.25, p<0.0001), illustrating thate there is both intra-specific genetic variability and phenotypic plasticity in the sample.
+Outliers in the data were removed, and checks for normality carried out. 
+As the data is not normal, a Kruskal Wallis test was used to check for significant differences between the mean height of each provenance within each trial.
+This showed that there are statistically significant differences between provenances and families within trials (effect size 0.25, p<0.0001), illustrating thate there is both intra-specific genetic variability and phenotypic plasticity in the sample.
 
 ## Compare model performance
 
@@ -90,7 +96,7 @@ Table \@ref(tab:model-performance) shows a ranked comparison of model metrics fo
 sp <- sp %>% mutate(TrialProvFam=factor(Trial):factor(Provenance):factor(Family))
 # initial models
 pair.mod1 <- lmer(log(height) ~ MWMT_T + PAS_T + MWMT_T*PAS_T + (1|TrialProvFam), data=sp)
-pair.mod2 <- lmer(log(height) ~ MWMT_T + PAS_T + MWMT_T*PAS_T + (1|TrialProvFam), data=sp)
+#pair.mod2 <- lmer(log(height) ~ MWMT_T + PAS_T + MWMT_T*PAS_T + (1|TrialProvFam), data=sp)
 pair.mod3 <- lmer(log(height) ~ TD_T + Eref_T + TD_T*Eref_T + (1|TrialProvFam), data=sp)
 pca.mod1 <- lmer(log(height) ~ DD_18_T + FFP_T + DD_18_T*FFP_T + (1|TrialProvFam), data=sp)
 pca.mod2 <- lmer(log(height) ~ DD_18_T + TD_T + DD_18_T*TD_T + (1|TrialProvFam), data=sp)
@@ -116,11 +122,11 @@ compare.mods <- compare_performance(pair.mod1, pair.mod2,pair.mod3,
 
 plot(compare.mods)
 
-#write.csv(compare.mods, paste0(wd,'/Scots_pine/compare_performance_interactions2.csv'))
-#compare.mods <- read.csv(paste0(wd,'/Scots_pine/compare_performance_interactions2.csv')) # PC
-#compare.mods <- read.csv(paste0(wd,'/data-raw/compare_performance_interactions2.csv')) # mac
+#write.csv(compare.mods, paste0(wd,'/Scots_pine/compare_performance_interactions3.csv'))
+#compare.mods <- read.csv(paste0(wd,'/Scots_pine/compare_performance_interactions3.csv')) # PC
+#compare.mods <- read.csv(paste0(wd,'/data-raw/compare_performance_interactions3.csv')) # mac
 #compare.mods$X<-NULL
-knitr::kable(head(compare.mods[,1:9],15), booktabs=TRUE,
+knitr::kable(head(compare.mods[,1:10],15), booktabs=TRUE,
              caption = "Comparison of model indices") %>% 
   kableExtra::kable_styling(latex_options = c("hold_position"), font_size = 9)
 #compare.perf <- image_read(paste0(wd,'figures/compare_best_interactions.png'))
@@ -131,57 +137,58 @@ knitr::kable(head(compare.mods[,1:9],15), booktabs=TRUE,
 ## Cross-validation
 
 Using the five 'best' models from the comparisons above, cross-validation was carried out. 
-This involves splitting the dataset into ‘training’ and ‘testing’ samples, fitting each model repeatedly (1000 iterations), and recording the mean absolute error (MAE) and R2 marginal from each run.
-The results of the cross validation (Figure \@ref(fig:cross-validation)) indicate that "dredge2" and "dredge3" have the highest average R2 marginal. Both also showed the lowest average MAE.
+This involves splitting the dataset into ‘training’ and ‘testing’ samples, fitting each model repeatedly (1000 iterations), and recording the mean absolute error (MAE) and R2 from each run.
+The results of the cross validation (Figure \@ref(fig:cross-validation)) indicate that "dredge2" and "dredge3" have the highest average R2. Both also showed the lowest average MAE.
 These two models were therefore taken forwards to be tested within the ΔTraitSDM framework.
 The two models took the forms:
 
-dredge2 = height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T + (1|Trial/Block/Provenance)
+dredge2 = height ~ DD_18_T + NFFD_P + PAS_T + DD_18_T x NFFD_P + NFFD_P x PAS_T + (1|Trial/Provenance/Family)
 
-dredge3 = height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Block/Provenance)
+dredge3 = height ~ DD_18_T + NFFD_P + TD_T + DD_18_T x NFFD_P + NFFD_P x TD_T+ (1|Trial/Provenance/Family)
 
 
 ```{r cross-validation, include=FALSE, fig.cap="Cross validaton results"}
-#results<-NULL
+results<-NULL
 
-#for(i in 1:1000) {
+for(i in 1:1000) {
   
   #i<-1
-  #rows<-sample(x=1:nrow(sp.raw),size=round(nrow(sp.raw)*0.25,1))
-  #training<-sp.raw[-rows,]
-  #testing<-sp.raw[rows,]
+  rows<-sample(x=1:nrow(sp),size=round(nrow(sp)*0.25,1))
+  training<-sp[-rows,]
+  testing<-sp[rows,]
   
-  #training<-na.omit(training)
-  #testing<-na.omit(testing)
+  training<-na.omit(training)
+  testing<-na.omit(testing)
   
-  #dredge3<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = training)
-  #dredge2<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(PAS_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(PAS_T) + (1|Trial/Block/Provenance),data = training)
-  #whittet.mod3 <- lmer(log(height) ~ scale(DD5_T) + scale(MWMT_P) + scale(MCMT_T) + scale(MAP_T) + scale(TD_P) + scale(DD5_T)*scale(MWMT_P) + (1|Trial/Block/Provenance), data = training)
-  #pair.mod2 <- lmer(log(height) ~ scale(MWMT_P) + scale(PAS_T) + scale(MWMT_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=training)
-  #diff.mod3 <- lmer(log(height) ~ scale(DD0_P) + scale(PAS_T) + scale(DD0_P)*scale(PAS_T) + (1|Trial/Block/Provenance), data=training)
+  dredge3<-lmer(log(height) ~ DD_18_T + NFFD_P + TD_T + DD_18_T*NFFD_P + NFFD_P*TD_T+ (1|TrialProvFam),data = training)
+  dredge2<-lmer(log(height) ~ DD_18_T + NFFD_P + PAS_T + DD_18_T*NFFD_P + NFFD_P*PAS_T + (1|TrialProvFam),data = training)
+  pca.mod1 <- lmer(log(height) ~ DD_18_T + FFP_T + DD_18_T*FFP_T + (1|TrialProvFam), data=training)
+  pair.mod1 <- lmer(log(height) ~ MWMT_T + PAS_T + MWMT_T*PAS_T + (1|TrialProvFam), data=training)
+  pair.mod3 <- lmer(log(height) ~ TD_T + Eref_T + TD_T*Eref_T + (1|TrialProvFam), data=training)
 
-  #p.d3<-predict(dredge3,testing)-log(testing$height)
-  #p.d2<-predict(dredge2,testing)-log(testing$height)
-  #p.wh3<-predict(whittet.mod3,testing)-log(testing$height)
-  #p.pr2<-predict(pair.mod2,testing)-log(testing$height)
-  #p.df3<-predict(diff.mod3,testing)-log(testing$height)
-  
-  #results<-rbind(results,data.frame(
-  #Run=rep(i,5),
-    #Model=c('dredge3','dredge2','whittet.mod3','pair.mod2','diff.mod3'),
-    #MAE=c(mean(abs(p.d3)),mean(abs(p.d2)),mean(abs(p.wh3)),mean(abs(p.pr2)),mean(abs(p.df3))),
-    #R2marg=c(r2(dredge3)$R2_marginal, r2(dredge2)$R2_marginal,r2(whittet.mod3)$R2_marginal,
-             #r2(pair.mod2)$R2_marginal,r2(diff.mod3)$R2_marginal)))
-  
-#}
 
-#write.csv(results, paste0(wd,'Scots_pine/cross-validation_results_interactions3.csv'))
+  p.d3<-predict(dredge3,testing, allow.new.levels=TRUE)-log(testing$height)
+  p.d2<-predict(dredge2,testing, allow.new.levels=TRUE)-log(testing$height)
+  p.pc1<-predict(pca.mod1,testing, allow.new.levels=TRUE)-log(testing$height)
+  p.pr1<-predict(pair.mod1,testing, allow.new.levels=TRUE)-log(testing$height)
+  p.pr3<-predict(pair.mod2,testing, allow.new.levels=TRUE)-log(testing$height)
+  
+  results<-rbind(results,data.frame(
+  Run=rep(i,5),
+    Model=c('dredge3','dredge2','pca.mod1','pair.mod1','pair.mod3'),
+    MAE=c(mean(abs(p.d3)),mean(abs(p.d2)),mean(abs(p.pc1)),mean(abs(p.pr1)),mean(abs(p.pr3))),
+    R2=c(r2(dredge3)$R2_conditional, r2(dredge2)$R2_conditional,r2(pca.mod1)$R2_conditional,
+             r2(pair.mod1)$R2_conditional,r2(pair.mod3)$R2_conditional)))
+  
+}
+
+#write.csv(results, paste0(wd,'Scots_pine/cross-validation_results_interactions4.csv'))
 
 ```
 
 
 ```{r cv-results, include=T, echo=FALSE, warning=FALSE}
-results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions3.csv')) # PC
+results<-read.csv(paste0(wd,'Scots_pine/cross-validation_results_interactions4.csv')) # PC
 
 results %>% 
   ggplot(aes(Model,MAE, colour=Model))+geom_boxplot()+
@@ -192,9 +199,9 @@ results %>%
 #knitr::include_graphics(paste0(wd,'figures/sp_model_compare_MAE.png'))
 
 results %>% 
-  ggplot(aes(Model,R2marg, colour=Model))+geom_boxplot()+
+  ggplot(aes(Model,R2, colour=Model))+geom_boxplot()+
   theme_minimal()+
-  ylab("R2marg")+
+  ylab("R2")+
   theme(axis.text.x = element_blank())
 
 #knitr::include_graphics(paste0(wd,'figures/sp_model_compare_r2.png'))
@@ -587,6 +594,34 @@ Very different results from the two 'best models'.
 I've chosen the one that looks more sensible i.e. closer to the current distribution.
 Is this valid? 
 
+From Marta - the second application is the most correct looking at how the model has been fitted. 
+The model was fitted with climate data that is different for the provenance and the trials, so if you can keep the same structure for the predictions that will be more correct
+I don't think that choosing a model prediction based on tree height that is more similar to the current distribution is a good strategy because you're forcing the result to match the distribution. 
+Indeed, we tree height is  not directly correlated with species ranges in many cases, because species ranges can be more determined by other fitness-related traits (i.e. phenology, reproduction, etc). 
+
+Next steps
+Questions/hypothesis - I guess these would be focused around the WP5 Scottish case study aims, which are to explore the carbon sequestration/resilience implications of using improved FRM. 
+So I guess it is about trying to uncover the provenances which might perform best for those aspects (growth/resistance to Dothistroma) and where they might do well in the future? 
+
 How to I start to model separate provenances/groups of provenances?
+There is one part of the DeltaTraitSDM code that you have where you can select provenances coming from the highest (mvar1_high) and lowest (mvar1_low) values of evapotranspiration (that was the variable most important selected by the model). I guess that you could do similarly to plot the differences among provenances related to the variables of the provenance along the trials. 
+
+e.g.
+```{r}
+#average response 
+#aa<-predict(M20,DFAge13, re.form=NA, type="response")
+#a <-exp(aa)
+
+#lowest response
+#DFlowAge13= data.frame("St_Age" = mvar0, "St_Pet.max_P" = mvar1_low, "St_Bio13_T" = mvar2)
+#alow<-predict(M20, DFlowAge13, re.form=NA, type="response")
+#al <-exp(alow)
+
+#highest response
+#DFhighAge13= data.frame("St_Age" = mvar0, "St_Pet.max_P" = mvar1_high, "St_Bio13_T" = mvar2)
+#ahigh<-predict(M20, DFhighAge13, re.form=NA, type="response")
+#ah <-exp(ahigh)
+
+```
 
 
