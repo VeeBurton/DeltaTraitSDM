@@ -75,7 +75,12 @@ The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates
 
 ```{r boxplot, include=T,echo=F,fig.cap="Boxplot"}
 
-sp <- sp %>% mutate(TrialProvFam=factor(Trial):factor(Provenance):factor(Family))
+
+sp.raw %>%
+  group_by(Trial, Block, Provenance, Family) %>%
+  get_summary_stats(height, type = "mean_sd")
+
+sp <- sp %>% mutate(TrialProvFam=factor(Trial):factor(Block):factor(Provenance):factor(Family))
 sp <- sp %>% mutate(ProvFam=factor(Provenance):factor(Family))
 
 ggplot(sp)+
