@@ -48,7 +48,7 @@ According to these, factors driving height may be: *degree days below 18*, *prec
   
 ```{r data, include=FALSE, echo=FALSE}
 
-# read in standardised data (with raw height)
+# read in data
 sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data PC
 #sp.raw <- read.csv(paste0(wd,"data-raw/Scots_pine_H.csv")) # raw data Mac
 sp.raw$X <- NULL
