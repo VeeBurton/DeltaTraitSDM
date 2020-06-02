@@ -29,9 +29,10 @@ trial.block <- sp %>%
   group_by(Trial,Block) %>% 
   summarise(mean=mean(height))
 
-ggplot(sp, aes(reorder(Provenance, height), height, group = Provenance))+
+ggplot(sp, aes(reorder(ID1, height), height, group = ID1))+
   geom_violin()+
-  facet_grid(Trial~Block)
+  facet_grid(Trial~Block)+
+  theme(axis.text.x = element_text(angle = 90))
 
 ## spatial effect in trial?
 
@@ -77,6 +78,8 @@ resNest <- remlf90(fixed  = W17Height ~ 1,
                    random = ~ Population + PlantingSite + Block,
                    data = psyDat)
 
+resNest <- lmer(height ~ (1|Provenance/Trial/Block),data=sp)
+
 ##Shows variance components - still a lot of residual but PlantingSite
 ##clearly contains most of the variation
 
@@ -84,47 +87,47 @@ summary(resNest)
 
 ## Here we join the fitted values and work out residuals associated with each pop and plot them...
 
-psyDat%>%cbind(fitted = fitted(resNest))%>%
-  group_by(PlantingSite, Population, Seed.Zone)%>%
+sp%>%cbind(fitted = fitted(resNest))%>%
+  group_by(Trial, Provenance, Seed.Zone)%>%
   summarise(mean_fitted = mean(na.omit(fitted)),
-            mean_obs = mean(na.omit(W17Height)))%>%
+            mean_obs = mean(na.omit(height)))%>%
   mutate(diff = mean_fitted-mean_obs)%>%
-  ggplot(aes(PlantingSite, diff, group = Population, colour = Seed.Zone, label = Population))+
+  ggplot(aes(Trial, diff, group = Provenance, colour = Seed.Zone, label = Provenance))+
   geom_line()+geom_text()
 
 ## There is clearly some interaction going on - let's just look at Glensaugh and Inverewe and get 
 ## rid of the lesss interactive/ill-fitting provenances (abritrary cutoff of 95 mm across both sites)
 
-psyDat%>%cbind(fitted = fitted(resNest))%>%
-  group_by(PlantingSite, Population, Seed.Zone)%>%
+sp%>%cbind(fitted = fitted(resNest))%>%
+  group_by(Trial, Provenance, Seed.Zone)%>%
   summarise(mean_fitted = mean(na.omit(fitted)),
-            mean_obs = mean(na.omit(W17Height)))%>%
-  mutate(diff = mean_fitted-mean_obs)%>%filter(PlantingSite != "BORDERS")%>%
-  tidyr::pivot_wider(id_cols = c("Population", "Seed.Zone"),
-                     names_from = PlantingSite,
+            mean_obs = mean(na.omit(height)))%>%
+  mutate(diff = mean_fitted-mean_obs)%>%filter(Trial != "BORDERS")%>%
+  tidyr::pivot_wider(id_cols = c("Provenance", "Seed.Zone"),
+                     names_from = Trial,
                      values_from = diff)%>%
   mutate(sum_diff = abs(GLENSAUGH) + abs(INVEREWE))%>%
   filter(sum_diff > 90)%>%
-  reshape2::melt(id.vars = c("Population", "Seed.Zone", "sum_diff"))%>%
-  ggplot(aes(variable, value, group = Population, colour = Seed.Zone, label = Population))+
+  reshape2::melt(id.vars = c("Provenance", "Seed.Zone", "sum_diff"))%>%
+  ggplot(aes(variable, value, group = Provenance, colour = Seed.Zone, label = Provenance))+
   geom_line()+geom_text()+geom_hline(yintercept = 0, lty = "dashed")
 
 ## So Allt Cul, Glen Affric and Abernethy so better than expected by the model at Glensaugh,
 ## Beinn Eighe and Shieldaig do better than expected at Inverewe
 ## Amat does poorer at both.. must be because it did well at Yair...
 
-residFit = psyDat%>%cbind(fitted = fitted(resNest))%>%
-  group_by(PlantingSite, Population, Seed.Zone)%>%
+residFit = sp%>%cbind(fitted = fitted(resNest))%>%
+  group_by(Trial, Provenance, Seed.Zone)%>%
   summarise(mean_fitted = mean(na.omit(fitted)),
-            mean_obs = mean(na.omit(W17Height)))%>%
-  mutate(diff = mean_fitted-mean_obs)%>%filter(PlantingSite != "BORDERS")%>%
-  tidyr::pivot_wider(id_cols = c("Population", "Seed.Zone"),
-                     names_from = PlantingSite,
+            mean_obs = mean(na.omit(height)))%>%
+  mutate(diff = mean_fitted-mean_obs)%>%filter(Trial != "BORDERS")%>%
+  tidyr::pivot_wider(id_cols = c("Provenance", "Seed.Zone"),
+                     names_from = Trial,
                      values_from = diff)%>%
-  reshape2::melt(id.vars = c("Population", "Seed.Zone"))%>%
-  left_join(env)
+  reshape2::melt(id.vars = c("Provenance", "Seed.Zone"))%>%
+  left_join(sp)
 
-ggplot(residFit, aes(x, value, colour = variable, label = Population))+
+ggplot(residFit, aes(Longitude, value, colour = variable, label = Provenance))+
   geom_smooth()+
   geom_smooth(method = "lm", lty = "dashed", se = F)+
   geom_label()+
