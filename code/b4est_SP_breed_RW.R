@@ -74,11 +74,11 @@ psyDat = psy%>%
 
 ##Start by fitting a simple model with just provenance and planting site...
 
-resNest <- remlf90(fixed  = W17Height ~ 1,
-                   random = ~ Population + PlantingSite + Block,
-                   data = psyDat)
+#resNest <- remlf90(fixed  = W17Height ~ 1,
+                   #random = ~ Population + PlantingSite + Block,
+                   #data = psyDat)
 
-resNest <- lmer(height ~ (1|Provenance/Trial/Block),data=sp)
+resNest <- lmer(height ~ (1|Trial/Block/Provenance),data=sp)
 
 ##Shows variance components - still a lot of residual but PlantingSite
 ##clearly contains most of the variation
@@ -107,7 +107,7 @@ sp%>%cbind(fitted = fitted(resNest))%>%
                      names_from = Trial,
                      values_from = diff)%>%
   mutate(sum_diff = abs(GLENSAUGH) + abs(INVEREWE))%>%
-  filter(sum_diff > 90)%>%
+  filter(sum_diff > 10)%>%
   reshape2::melt(id.vars = c("Provenance", "Seed.Zone", "sum_diff"))%>%
   ggplot(aes(variable, value, group = Provenance, colour = Seed.Zone, label = Provenance))+
   geom_line()+geom_text()+geom_hline(yintercept = 0, lty = "dashed")
