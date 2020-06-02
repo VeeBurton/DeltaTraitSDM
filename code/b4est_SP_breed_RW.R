@@ -5,37 +5,48 @@ library(ggplot2)
 
 #read in data and call interaction/nested variables....
 
-psy = read.csv("Y:/CONIFERS/SCOTS PINE/psy_Scav.csv", na.strings = "*")%>%
-  mutate(block = factor(PlantingSite:Block),
-         PopSite = factor(PlantingSite:Population),
-         FamSite = factor(PlantingSite:Family))
+#psy = read.csv("Y:/CONIFERS/SCOTS PINE/psy_Scav.csv", na.strings = "*")%>%
+  #mutate(block = factor(PlantingSite:Block),
+         #PopSite = factor(PlantingSite:Population),
+         #FamSite = factor(PlantingSite:Family))
 
 # read in the environmental covariates and join them to the phenotype data
 
-env = read.csv("Y:/CONIFERS/SCOTS PINE/sp_env.csv")
+#env = read.csv("Y:/CONIFERS/SCOTS PINE/sp_env.csv")
 
-psy = left_join(psy, env)
+#psy = left_join(psy, env)
+
+sp.raw <- read.csv(paste0(wd,"Scots_pine/Scots_pine_H.csv")) # raw data PC
+#sp.raw <- read.csv(paste0(wd,"data-raw/Scots_pine_H.csv")) # raw data Mac
+sp.raw$X <- NULL
+#str(sp.raw)
+sp.raw<-na.omit(sp.raw)
+colnames(sp.raw)[11]<-"height"
 
 ## overall summary - variation among populations...
 
-ggplot(psy, aes(reorder(Population, W17Height), W17Height, group = Population))+
+trial.block <- sp %>% 
+  group_by(Trial,Block) %>% 
+  summarise(mean=mean(height))
+
+ggplot(sp, aes(reorder(Provenance, height), height, group = Provenance))+
   geom_violin()+
-  facet_wrap(~PlantingSite)
+  facet_grid(Trial~Block)
 
 ## spatial effect in trial?
 
-ggplot(psy, aes(Row, Column, fill = W17Height))+
+ggplot(sp, aes(Row, Column, fill = height))+
   geom_tile(colour = "grey55")+theme_void()+
-  facet_wrap(~PlantingSite)+scale_fill_viridis_c()
+  facet_grid(Trial~Block)+scale_fill_viridis_c()
 
 ## melt data to plot response against each covariate...
 
-psySum = psy %>%
-  tidyr::pivot_longer(cols = x:VAPPressure)%>%
-  group_by(Population, PlantingSite, name, value)%>%
-  summarise(mn_ht = mean(na.omit(W17Height)))
+psySum = sp %>%
+  tidyr::pivot_longer(cols = MAP_P:CMD_T)%>%
+  group_by(Provenance, Trial, name, value)%>%
+  summarise(mn_ht = mean(na.omit(height)))
   
-ggplot(psySum, aes(value, mn_ht, colour = PlantingSite))+
+ggplot(psySum, aes(value, mn_ht, colour = Trial))+
   geom_point()+geom_smooth()+facet_wrap(~name, scales = "free")+
   theme_bw()+theme(legend.position = "bottom")+
   geom_smooth(data = psySum, aes(x = value, y = mn_ht, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
