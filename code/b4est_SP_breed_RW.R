@@ -29,10 +29,11 @@ trial.block <- sp %>%
   group_by(Trial,Block) %>% 
   summarise(mean=mean(height))
 
-ggplot(sp, aes(reorder(ID1, height), height, group = ID1))+
+ggplot(sp, aes(reorder(ID1, height), height, color = ID1))+
   geom_violin()+
   facet_grid(Trial~Block)+
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 90))+
+  theme(legend.position = "none")
 
 ## spatial effect in trial?
 
@@ -131,13 +132,13 @@ ggplot(residFit, aes(Longitude, value, colour = variable, label = Provenance))+
   geom_smooth()+
   geom_smooth(method = "lm", lty = "dashed", se = F)+
   geom_label()+
-  theme_bw(base_size = 8)+labs(x = "Longitude OSGB36", y = "Fitted-Observed")
+  theme_bw(base_size = 8)+labs(x = "Longitude", y = "Fitted-Observed")
                            
 ## tendency is for the ones that grow more than predicted by the model at Inverewe are from the west and v.versa
 ## Glen Affric and Rothie looks a bit funny - plot again without it - just for laughs
 
-residFit%>%filter(Population != "GA" & Population != "RM")%>%
-  ggplot(aes(x, value, colour = variable, label = Population))+
+residFit%>%filter(Provenance != "GD" & Provenance != "CR")%>%
+  ggplot(aes(Longitude, value, colour = variable, label = Provenance))+
   geom_point()+
   geom_smooth()+geom_smooth(method = "lm", lty = "dashed", se = F)
 
