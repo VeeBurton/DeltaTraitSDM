@@ -12,11 +12,58 @@ colnames(sp)[11]<-"height"
 sp$ï..Seqno<-NULL
 summary(sp$height)
 sp$height <- as.numeric(as.character(sp$height)) 
+summary(sp$height)
 # i had erronous height values before due to incorrect conversion from factor to numeric
 sp$Block[which(sp$Block=="c")] <- "C"
 sp$Block<-factor(sp$Block)
 
 summary(sp)
+
+# fully understand structure
+sp.structure <- sp %>% 
+  group_by(Trial,Provenance) %>% 
+  summarise(Provenances=length(unique(Provenance)),
+            Families=length(unique(as.character(Family))),
+            Individuals=length(unique(Tag)))
+
+sp.families <- sp %>% 
+  group_by(Provenance) %>% 
+  summarise(Families=list(unique(Family)))
+# definitely unique Families per provenance
+
+# make sure random effect stucture is correctly defined
+# data is crossed - we observed every Provenance and Family at every Trial and Block
+# there are 3 sites – called Borders, Glensaugh, Inverewe here – and each is a fully randomised block design: 
+# there are 4 blocks at Borders, Glensaugh and 3 at Inverewe
+# in each site there are 21 populations, 8 families and either 3 or 4 individuals per family (1 per block)
+# so there are 21*8*4=672 at Borders, Glensaugh; 21*8*3= 504 at Inverewe; total = 1848
+
+# eplicitly nest blocks within trials
+sp <- within(sp, site <- factor(Trial:Block))
+length(unique(sp$site)) # 11, 4 @ Borders, 4 @ Glensaugh, 3 @ Inverewe
+# could represent nesting either with (1|Trial/Block) or (1|site)
+xtabs(~ Trial + Block, sp) # incorrect
+xtabs(~ Trial + site, sp) # correct
+# explcitly nest families within provenances
+sp <- within(sp, provFam <- factor(Provenance:Family))
+length(unique(sp$provFam)) # mostly 8 per provenance (21*8=168), some have 9 families
+xtabs(~ Provenance + Family, sp)
+xtabs(~ Provenance + provFam, sp)
+
+# every provenance and every family is at every trial and block (fully crossed)
+xtabs(~ Trial + provFam, sp)
+xtabs(~ site + provFam, sp)
+site.mod <- lmer(height ~ (1|site)+(1|provFam), sp) # crossed design with explicitly nested variables
+trial.mod <- lmer(height ~ (1|Trial)+(1|provFam), sp) # crossed design ignoring block, ProvFam explicitly nested
+summary(site.mod)
+summary(trial.mod)
+# site (Trial:Block) is used, there one observation of ProvFam per site
+# if Trial is used, there are 3-4 observations of ProvFam per site
+
+# according to site.mod (Trial:Block) + (Provenance:Family)
+# Site explains 44% of the variance
+# Provenance:Family explains 8% of the variance
+# there is still 47% residual error
 
 env <- read.csv("~/R/DeltaTraitSDM/Scots_pine/scots_pine_all_locations_elev_Normal_1961_1990Y.csv")
 env_P <- env %>% filter(ID2!="Trial")
