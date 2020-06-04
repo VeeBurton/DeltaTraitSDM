@@ -30,6 +30,7 @@ library(viridis) # for palette
 library(classInt) # control raster bins
 library(easystats)
 library(report)
+library(ggpubr) # publication ready plots
 library(rstatix) # provides pipe-friendly R functions for easy statistical analyses
 
 #extrafont::font_import() # make sure fonts loaded
@@ -76,11 +77,14 @@ The data is nested Trial/Block/Provenance. Figure \@ref(fig:boxplot) illustrates
 ```{r boxplot, include=T,echo=F,fig.cap="Boxplot"}
 
 
-sp.raw %>%
+sp.summary <- sp %>%
   group_by(Trial, Block, Provenance, Family) %>%
   get_summary_stats(height, type = "mean_sd")
 
-sp <- sp %>% mutate(TrialProvFam=factor(Trial):factor(Block):factor(Provenance):factor(Family))
+sp <- sp %>% mutate(TrialProv=Trial:Provenance)
+sp <- sp %>% mutate(TrialBProv=factor(Trial):factor(Block):factor(Provenance))
+sp <- sp %>% mutate(TrialBProvFam=factor(Trial):factor(Block):factor(Provenance):factor(Family))
+sp <- sp %>% mutate(TrialProvFam=factor(Trial):factor(Provenance):factor(Family))
 sp <- sp %>% mutate(ProvFam=factor(Provenance):factor(Family))
 
 ggplot(sp)+
@@ -90,9 +94,46 @@ ggplot(sp)+
 
 ```
 
+```{r check-normality}
+
+# check normality by examining residuals
+# Build the linear model
+model  <- lm(height ~ Trial, data = sp)
+summary(model)
+# Create a QQ plot of residuals
+ggqqplot(residuals(model))
+# Compute Shapiro-Wilk test of normality
+shapiro_test(residuals(model))
+# In the QQ plot, if the points fall approximately along the reference line, we can assume normality.
+# In the Shapiro-Wilk test, if the p-value is not significant, we can assume normality.
+# data is not normal...
+# compute Kruskal-Wallis
+res.kruskalP <- sp %>% kruskal_test(height ~ Provenance)
+res.kruskalP
+sp %>% kruskal_effsize(height ~ Provenance)
+# small effect of provenance (0.01)
+res.kruskalT <- sp %>% kruskal_test(height ~ Trial)
+res.kruskalT
+sp.nout %>% kruskal_effsize(height ~ Trial)
+# large significant effect  of trial (0.21)
+res.kruskalTP <- sp %>% kruskal_test(height ~ TrialProv)
+res.kruskalTP
+sp %>% kruskal_effsize(height ~ TrialProv)
+# significant differences p<0.0001
+# large effect size of trial:provenance (0.25)
+# Pairwise comparisons
+pwcTP <- sp %>% 
+  dunn_test(height ~ TrialProv, p.adjust.method = "bonferroni") 
+pwcTP
+# no significant differences between Trial:Block:Prov
+# but significant differences between some Provenances if Trial:Prov used
+
+```
+
+
 Outliers in the data were removed, and checks for normality carried out. 
 As the data is not normal, a Kruskal Wallis test was used to check for significant differences between the mean height of each provenance within each trial.
-This showed that there are statistically significant differences between provenances and families within trials (effect size 0.25, p<0.0001), illustrating thate there is both intra-specific genetic variability and phenotypic plasticity in the sample.
+This showed that there are statistically significant differences between some provenances within trials (effect size 0.25, p<0.0001), illustrating thate there is both intra-specific genetic variability and phenotypic plasticity in the sample. Most of the variation due to trial.
 
 ## Compare model performance
 
@@ -120,7 +161,7 @@ whittet.mod1 <- lmer(log(height) ~ MAP_T + FFP_T + MAP_T*FFP_T + (1|TrialProvFam
 whittet.mod2 <- lmer(log(height) ~ MAP_T + FFP_T + MAP_T*FFP_T + (1|TrialProvFam), data = sp)
 whittet.mod3 <- lmer(log(height) ~ DD5_T + MWMT_T + MCMT_T + MAP_T + TD_T + DD5_T*MWMT_T + (1|TrialProvFam), data = sp)
 
-compare.mods <- compare_performance(pair.mod1, pair.mod2,pair.mod3,
+compare.mods <- compare_performance(pair.mod1,pair.mod3,
                                     pca.mod1,pca.mod2,pca.mod3,
                                     diff.mod1,diff.mod2,diff.mod3,
                                     dredge1,dredge2,dredge3,
@@ -235,7 +276,9 @@ text_short(res_d2)
 
 ```{r dredge3, include=TRUE, echo=FALSE, warning=FALSE}
 
-dredge3<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|Trial/Block/Provenance),data = sp.raw)
+dredge3<-lmer(log(height) ~ scale(DD_18_T) + scale(NFFD_P) + scale(TD_T) + scale(DD_18_T)*scale(NFFD_P) + scale(NFFD_P)*scale(TD_T)+ (1|TrialProvFam),data = sp)
+
+summary(dredge3)
 
 res_d3 <- report(dredge3, ci= 95)
 #d3_df<-table_short(results)

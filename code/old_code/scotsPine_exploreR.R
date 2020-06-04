@@ -80,7 +80,7 @@ ggqqplot(sp.nout, "height", facet.by = "ID1")
 res.kruskalP <- sp.nout %>% kruskal_test(height ~ ID1)
 res.kruskalP
 sp.nout %>% kruskal_effsize(height ~ ID1)
-# no significant differences between provenances with outliers, but when outliers are removed, there is a small significant effect (0.13)
+# no significant differences between provenances with outliers, but when outliers are removed, there is a small significant effect (0.013)
 res.kruskalT <- sp.nout %>% kruskal_test(height ~ Trial)
 res.kruskalT
 sp.nout %>% kruskal_effsize(height ~ Trial)
