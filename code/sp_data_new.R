@@ -3,6 +3,7 @@ library(ggplot2)
 library(ggpubr)
 library(rstatix)
 library(lme4)
+library(corrplot)
 
 sp <- read.csv("~/R/DeltaTraitSDM/Scots_pine/PS_Common_Garden_Heights.csv")
 
@@ -60,11 +61,6 @@ summary(trial.mod)
 # site (Trial:Block) is used, there one observation of ProvFam per site
 # if Trial is used, there are 3-4 observations of ProvFam per site
 
-# according to site.mod (Trial:Block) + (Provenance:Family)
-# Site explains 44% of the variance
-# Provenance:Family explains 8% of the variance
-# there is still 47% residual error
-
 env <- read.csv("~/R/DeltaTraitSDM/Scots_pine/scots_pine_all_locations_elev_Normal_1961_1990Y.csv")
 env_P <- env %>% filter(ID2!="Trial")
 colnames(env_P)[2]<-"Provenance"
@@ -83,10 +79,14 @@ sp2 <- left_join(sp, env_P)
 sp2 <- right_join(sp2, env_T, by="Trial")
 
 summary(sp2)
+sp2$Trial <- factor(sp2$Trial)
+sp2$Provenance <- factor(sp2$Provenance)
 
 summary(sp2$height)
 hist(sp2$height)
 # normal distribution
+summary(sp2)
+sp2<-na.omit(sp2)
 
 # look at height distribution per provenance for each trial
 ggplot(sp2, aes(Provenance, height, color = Provenance))+
@@ -97,131 +97,155 @@ ggplot(sp2, aes(Provenance, height, color = Provenance))+
 
 # family means
 sp.summary <- sp2 %>% na.omit %>%  
-  group_by(Trial,Provenance,Family) %>% 
+  group_by(Trial,provFam) %>% 
   summarise(mn_height=mean(height)) 
 
-sp.summary <- sp.summary %>%
+sp.summary2 <- sp.summary %>%
   group_by(Trial) %>% 
   arrange(desc(mn_height), .by_group = TRUE)
 
-write.csv(sp.summary, "~/R/DeltaTraitSDM/Scots_pine/sp_family_summaries.csv")
+write.csv(sp.summary2, "~/R/DeltaTraitSDM/Scots_pine/sp_family_summaries.csv")
 
 # plot family means per trial
 ggplot(sp.summary)+
-  geom_col(aes(Provenance,mn_height,fill=Provenance))+
+  geom_col(aes(provFam,mn_height,fill=provFam))+
   facet_wrap(~Trial)+
   theme(legend.position = "none")
 
-# three-way anova for significant differences between family means
+# two way anova for significant differences between family means
+bxp <- ggboxplot(
+  sp2, x = "Trial", y = "height",
+  color = "provFam")
+bxp
 # check normality by examining residuals
 # Build the linear model
-lmod  <- lm(height ~ Trial*Provenance*Family, data = sp2)
+lmod  <- lm(height ~ Trial*provFam, data = sp2)
 summary(lmod)
 # Create a QQ plot of residuals
 ggqqplot(residuals(lmod)) # along line, normal
+ggqqplot(sp, "height", ggtheme = theme_bw()) +
+  facet_grid(provFam ~ Trial)
 # Compute Shapiro-Wilk test of normality
 shapiro_test(residuals(lmod)) # if the p-value is not significant, we can assume normality
 # homogneity of variance assumption
 # this can be checked using the Levene’s test, if not significant assume homogeneity
-sp2 %>% levene_test(height ~ Trial*Provenance*Family)
-res.aov <- sp2 %>% anova_test(height ~ Trial*Provenance*Family)
+sp2 %>% levene_test(height ~ Trial*provFam) # not significant
+res.aov <- sp2 %>% anova_test(height ~ Trial*provFam)
 res.aov
+# statistically significant interaction between Trial and provFam (F=1.2), p<0.05*
 
 # simple mixed model
-mxmod <- lmer(height ~ (1|Trial/Provenance/Family), sp2)
+mxmod <- lmer(height ~ (1|Trial)+(1|provFam), sp)
 summary(mxmod)
-
-total.var <- sum(94517,6306,9371,70808)
-
-Trial<- 94517/total.var*100
-Trial.prov<- 6306/total.var*100
-Trial.prov.fam <- 9371/total.var*100
-Residual<-70808/total.var*100
-
-# trial explains most of the variation (52%)
-# family explains more variation (5%) than Provenance (3.5%)
-# still a lot of residual (39%)
+# according to (Trial) + (Provenance/Family)
+# Trial explains 51% of the variance
+# Provenance:Family explains 6.8% of the variance
+# there is still 41% residual error
 
 # plot observed height vs. fitted height
-sp2 %>% na.omit %>% cbind(fitted = fitted(mxmod))%>%
-  group_by(Trial, Provenance, Seed.Zone)%>%
+sp2 %>% cbind(fitted = fitted(mxmod))%>%
+  group_by(Trial, provFam, Seed.Zone)%>%
   summarise(mean_fitted = mean(na.omit(fitted)),
             mean_obs = mean(na.omit(height)))%>%
   mutate(diff = mean_fitted-mean_obs)%>%
-  ggplot(aes(Trial, diff, group = Provenance, colour = Seed.Zone, label = Provenance))+
+  ggplot(aes(Trial, diff, group = provFam, colour = Seed.Zone, label = provFam))+
   geom_line()+geom_text()
 
-## there is clearly some interaction going on - just look at Glensaugh and Inverewe and get 
-## rid of the less interactive/ill-fitting provenances (abritrary cutoff of 25 mm across both sites)
-
-sp2 %>% na.omit %>% cbind(fitted = fitted(mxmod))%>%
-  group_by(Trial, Provenance, Seed.Zone)%>%
-  summarise(mean_fitted = mean(na.omit(fitted)),
-            mean_obs = mean(na.omit(height)))%>%
-  mutate(diff = mean_fitted-mean_obs)%>%filter(Trial != "BORDERS")%>%
-  tidyr::pivot_wider(id_cols = c("Provenance", "Seed.Zone"),
-                     names_from = Trial,
-                     values_from = diff)%>%
-  mutate(sum_diff = abs(GLENSAUGH) + abs(INVEREWE))%>%
-  filter(sum_diff > 25)%>%
-  reshape2::melt(id.vars = c("Provenance", "Seed.Zone", "sum_diff"))%>%
-  ggplot(aes(variable, value, group = Provenance, colour = Seed.Zone, label = Provenance))+
-  geom_line()+geom_text()+geom_hline(yintercept = 0, lty = "dashed")
-
 residFit <- sp2 %>% na.omit %>% cbind(fitted = fitted(mxmod))%>%
-  group_by(Trial, Provenance, Seed.Zone)%>%
+  group_by(Trial, provFam, Seed.Zone)%>%
   summarise(mean_fitted = mean(na.omit(fitted)),
             mean_obs = mean(na.omit(height)))%>%
-  mutate(diff = mean_fitted-mean_obs)%>%filter(Trial != "BORDERS")%>%
-  tidyr::pivot_wider(id_cols = c("Provenance", "Seed.Zone"),
+  mutate(diff = mean_fitted-mean_obs)%>%
+  tidyr::pivot_wider(id_cols = c("provFam", "Seed.Zone"),
                      names_from = Trial,
                      values_from = diff)%>%
-  reshape2::melt(id.vars = c("Provenance", "Seed.Zone")) %>% 
+  reshape2::melt(id.vars = c("provFam", "Seed.Zone")) %>% 
   left_join(sp2)
 
-ggplot(residFit, aes(Longitude.x, value, colour = variable, label = Provenance))+
+ggplot(residFit, aes(Longitude.x, value, colour = variable, label = provFam))+
   geom_smooth()+
   geom_smooth(method = "lm", lty = "dashed", se = F)+
   geom_label()+
   theme_bw(base_size = 8)+labs(x = "Longitude", y = "Fitted-Observed")
 
 # height ~ all climate variables
+# centre and scale climate variables 
+sp2$Latitude.y<-NULL
+sp2$Longitude.y<-NULL
+sp2$Elevation.y<-NULL
+sp2[,c(17:56)] <- scale(sp2[,c(17:56)], scale = TRUE, center = TRUE)
+summary(sp2)
+sp2$DD18_T<-NULL #(mostly NA values)
 
-basic.lm <- lm(height ~ Trial:Provenance:Family, data = sp2)
-summary(basic.lm)
-# plot the data
-ggplot(sp3, aes(x =Trial:Provenance, y = H)) +
-  geom_jitter() +
-  geom_smooth(method = "lm")
-# plot residuals
-plot(basic.lm, which = 1) # red line should be flat like the dashed grey line
-# look at qqplot
-plot(basic.lm, which = 2) # points should fall on diagonal line
+# corrplots
+corrplot(cor(sp2[,c(10,17:36)]), method = "ellipse") # provenance climate
+corrplot(cor(sp2[,c(10,37:55)]), method = "ellipse") # trial climate
 
-# check for data independence - essentially checking if need to account for random effects
-boxplot(Hraw ~ Trial:Provenance, data = sp3)
-# colour plot
-ggplot(sp3, aes(x = Trial:Provenance, y = Hraw, colour = Trial:Provenance)) +
-  geom_point(size = 2) +
-  theme_classic() +
-  theme(legend.position = "none")
-# split plot
-ggplot(aes(Trial:Provenance, Hraw), data = sp3) + 
-  geom_point() + 
-  facet_wrap(~ Trial:Provenance) + # create a facet for each trial
-  xlab("Trial:Provenance") + 
-  ylab("height")
+# pairplots
+panel.hist <- function(x, ...){
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "grey", ...)
+}
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y))
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor * r)
+}
 
-# include provenance as a fixed effect
-prov.lm <- lm(Hraw ~ Trial:Provenance, data = sp3)
-tidy(prov.lm)
-# as a random effect
-mixed.lmer <- lmer(Hraw ~ DD_18_T + (1|Trial/Provenance), data = sp3)
-summary(mixed.lmer)
-tidy(mixed.lmer)
-plot(mixed.lmer) 
-qqnorm(resid(mixed.lmer))
-qqline(resid(mixed.lmer)) # points should fall on line
+graphics::pairs(sp2[,c(10,17:26)], diag.panel=panel.hist, upper.panel=panel.cor)
+graphics::pairs(sp2[,c(10,27:36)], diag.panel=panel.hist, upper.panel=panel.cor)
+graphics::pairs(sp2[,c(10,37:46)], diag.panel=panel.hist, upper.panel=panel.cor)
+graphics::pairs(sp2[,c(10,47:55)], diag.panel=panel.hist, upper.panel=panel.cor)
 
+# mean differences between provenances and trials
+sp3 <- sp2 %>% mutate(MATdiff = MAT_P-MAT_T,
+                      MWMTdiff = MWMT_P-MWMT_T,
+                      MCMTdiff = MCMT_P-MCMT_T,
+                      TDdiff = TD_P-TD_T,
+                      MAPdiff = MAP_P-MAP_T,
+                      MSPdiff = MSP_P-MSP_T,
+                      AHMdiff = AHM_P-AHM_T,
+                      SHMdiff = SHM_P-SHM_T,
+                      DD0diff = DD0_P-DD0_T,
+                      DD_18diff = DD_18_P-DD_18_T,
+                      NFFDdiff = NFFD_P-NFFD_T,
+                      bFFPdiff = bFFP_P-bFFP_T,
+                      eFFPdiff = eFFP_P-eFFP_T,
+                      FFPdiff = FFP_P-FFP_T,
+                      PASdiff = PAS_P-PAS_T,
+                      EMTdiff = EMT_P-EMT_T,
+                      Erefdiff = Eref_P-Eref_T,
+                      CMDdiff = CMD_P-CMD_T)
+mean_diffs <- sp3 %>% 
+  group_by(Trial,Provenance) %>% 
+  summarise(meanH = mean(height, na.rm=TRUE),
+            MAP = mean(MAPdiff),
+            MSP = mean(MSPdiff),
+            TD = mean(TDdiff),
+            DD0 = mean(DD0diff),
+            DD18 = mean(DD_18diff),
+            NFFD = mean(NFFDdiff),
+            bFFP = mean(bFFPdiff),
+            FFP = mean(FFPdiff),
+            eFFP = mean(eFFPdiff),
+            PAS = mean(PASdiff),
+            Eref = mean(Erefdiff),
+            CMD = mean(CMDdiff))
 
+mean_diffs <- mean_diffs %>% 
+  pivot_longer(cols = MAP:CMD,
+               names_to = "variables",
+               values_to = "meandiff")
 
+ggplot(mean_diffs, aes(meandiff, meanH, colour = Trial))+
+  geom_point()+geom_smooth()+facet_wrap(~variables, scales = "free")+
+  theme_bw()+theme(legend.position = "bottom")+
+  geom_smooth(data = mean_diffs, aes(x = meandiff, y = meanH, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
