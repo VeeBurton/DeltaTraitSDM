@@ -168,6 +168,53 @@ ggplot(residFit, aes(Longitude.x, value, colour = variable, label = provFam))+
   geom_label()+
   theme_bw(base_size = 8)+labs(x = "Longitude", y = "Fitted-Observed")
 
+# mean differences between provenances and trials
+sp3 <- sp2 %>% mutate(MATdiff = MAT_T-MAT_P,
+                      MWMTdiff = MWMT_T-MWMT_P,
+                      MCMTdiff = MCMT_T-MCMT_P,
+                      TDdiff = TD_T-TD_P,
+                      MAPdiff = MAP_T-MAP_P,
+                      MSPdiff = MSP_T-MSP_P,
+                      AHMdiff = AHM_T-AHM_P,
+                      SHMdiff = SHM_T-SHM_P,
+                      DD0diff = DD0_T-DD0_P,
+                      DD_18diff = DD_18_T-DD_18_P,
+                      NFFDdiff = NFFD_T-NFFD_P,
+                      bFFPdiff = bFFP_T-bFFP_P,
+                      eFFPdiff = eFFP_T-eFFP_P,
+                      FFPdiff = FFP_T-FFP_P,
+                      PASdiff = PAS_T-PAS_P,
+                      EMTdiff = EMT_T-EMT_P,
+                      Erefdiff = Eref_T-Eref_P,
+                      CMDdiff = CMD_T-CMD_P)
+mean_diffs <- sp3 %>% 
+  group_by(Trial,provFam) %>% 
+  summarise(meanH = mean(height, na.rm=TRUE),
+            MAP = mean(MAPdiff),
+            MSP = mean(MSPdiff),
+            TD = mean(TDdiff),
+            DD0 = mean(DD0diff),
+            DD_18 = mean(DD_18diff),
+            NFFD = mean(NFFDdiff),
+            bFFP = mean(bFFPdiff),
+            FFP = mean(FFPdiff),
+            eFFP = mean(eFFPdiff),
+            PAS = mean(PASdiff),
+            Eref = mean(Erefdiff),
+            CMD = mean(CMDdiff))
+
+mean_diffs <- mean_diffs %>% 
+  pivot_longer(cols = MAP:CMD,
+               names_to = "variables",
+               values_to = "meandiff")
+
+ggplot(mean_diffs, aes(meandiff, meanH, colour = Trial))+
+  geom_point()+geom_smooth()+facet_wrap(~variables, scales = "free")+
+  theme_bw()+theme(legend.position = "bottom")+
+  xlab("Mean difference per family (Trial climate - Provenance climate)")+
+  ylab("Mean height (mm)")
+  geom_smooth(data = mean_diffs, aes(x = meandiff, y = meanH, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
+
 # height ~ all climate variables
 # centre and scale climate variables 
 sp2$Latitude.y<-NULL
@@ -205,25 +252,7 @@ graphics::pairs(sp2[,c(10,27:36)], diag.panel=panel.hist, upper.panel=panel.cor)
 graphics::pairs(sp2[,c(10,37:46)], diag.panel=panel.hist, upper.panel=panel.cor)
 graphics::pairs(sp2[,c(10,47:55)], diag.panel=panel.hist, upper.panel=panel.cor)
 
-# mean differences between provenances and trials
-sp3 <- sp2 %>% mutate(MATdiff = MAT_P-MAT_T,
-                      MWMTdiff = MWMT_P-MWMT_T,
-                      MCMTdiff = MCMT_P-MCMT_T,
-                      TDdiff = TD_P-TD_T,
-                      MAPdiff = MAP_P-MAP_T,
-                      MSPdiff = MSP_P-MSP_T,
-                      AHMdiff = AHM_P-AHM_T,
-                      SHMdiff = SHM_P-SHM_T,
-                      DD0diff = DD0_P-DD0_T,
-                      DD_18diff = DD_18_P-DD_18_T,
-                      NFFDdiff = NFFD_P-NFFD_T,
-                      bFFPdiff = bFFP_P-bFFP_T,
-                      eFFPdiff = eFFP_P-eFFP_T,
-                      FFPdiff = FFP_P-FFP_T,
-                      PASdiff = PAS_P-PAS_T,
-                      EMTdiff = EMT_P-EMT_T,
-                      Erefdiff = Eref_P-Eref_T,
-                      CMDdiff = CMD_P-CMD_T)
+
 mean_diffs <- sp3 %>% 
   group_by(Trial,Provenance) %>% 
   summarise(meanH = mean(height, na.rm=TRUE),
@@ -249,3 +278,8 @@ ggplot(mean_diffs, aes(meandiff, meanH, colour = Trial))+
   geom_point()+geom_smooth()+facet_wrap(~variables, scales = "free")+
   theme_bw()+theme(legend.position = "bottom")+
   geom_smooth(data = mean_diffs, aes(x = meandiff, y = meanH, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
+
+# DTSDM
+
+mod1 <- lmer(height ~ MAP_T + NFFD_T + MAP_T*MAP_P + NFFD_T*NFFD_P + (1|Trial)+(1|provFam), sp2)
+summary(mod1)
