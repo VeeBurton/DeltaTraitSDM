@@ -148,25 +148,73 @@ sp2 %>% cbind(fitted = fitted(mxmod))%>%
   summarise(mean_fitted = mean(na.omit(fitted)),
             mean_obs = mean(na.omit(height)))%>%
   mutate(diff = mean_fitted-mean_obs)%>%
+  filter(diff>=500 | diff<=-500) %>% 
   ggplot(aes(Trial, diff, group = provFam, colour = Seed.Zone, label = provFam))+
-  geom_line()+geom_text()
+  geom_line()+geom_text()+
+  ylab("Residuals")
+
+sp2%>%cbind(fitted = fitted(mxmod))%>%
+  group_by(Trial, Provenance, Seed.Zone)%>%
+  summarise(mean_fitted = mean(na.omit(fitted)),
+            mean_obs = mean(na.omit(height)))%>%
+  mutate(diff = mean_fitted-mean_obs)%>%#filter(Trial != "BORDERS")%>%
+  tidyr::pivot_wider(id_cols = c("Provenance", "Seed.Zone"),
+                     names_from = Trial,
+                     values_from = diff)%>%
+  mutate(sum_diff = abs(GLENSAUGH) + abs(INVEREWE))%>%
+  filter(sum_diff > 300)%>%
+  reshape2::melt(id.vars = c("Provenance", "Seed.Zone", "sum_diff"))%>%
+  ggplot(aes(variable, value, group = Provenance, colour = Seed.Zone, label = Provenance))+
+  geom_line()+geom_text()+geom_hline(yintercept = 0, lty = "dashed")+
+  ylab("Residuals")+xlab("Trial")
+
+# residuals = fitted - observed
+# positive residuals mean height prediction was too low
+# negative residuals mean height prediction was too high
+
+sp2%>%cbind(fitted = fitted(mxmod))%>%
+  filter(Trial!="GLENSAUGH") %>% 
+  ggplot(aes(fitted,height, color=Trial))+geom_point()+geom_smooth()
 
 residFit <- sp2 %>% na.omit %>% cbind(fitted = fitted(mxmod))%>%
-  group_by(Trial, provFam, Seed.Zone)%>%
+  group_by(Trial, Provenance, Seed.Zone)%>%
   summarise(mean_fitted = mean(na.omit(fitted)),
             mean_obs = mean(na.omit(height)))%>%
   mutate(diff = mean_fitted-mean_obs)%>%
-  tidyr::pivot_wider(id_cols = c("provFam", "Seed.Zone"),
+  tidyr::pivot_wider(id_cols = c("Provenance", "Seed.Zone"),
                      names_from = Trial,
                      values_from = diff)%>%
-  reshape2::melt(id.vars = c("provFam", "Seed.Zone")) %>% 
+  reshape2::melt(id.vars = c("Provenance", "Seed.Zone")) %>% 
   left_join(sp2)
 
-ggplot(residFit, aes(Longitude.x, value, colour = variable, label = provFam))+
+ggplot(residFit, aes(Longitude.x, value, colour = variable, label = Provenance))+
   geom_smooth()+
   geom_smooth(method = "lm", lty = "dashed", se = F)+
   geom_label()+
   theme_bw(base_size = 8)+labs(x = "Longitude", y = "Fitted-Observed")
+
+# explore simple relationships 
+# e.g.
+ggplot(sp2, 
+       aes(x = cut(DD0_P, breaks = 5), y = height, colour=Provenance)) + 
+  geom_boxplot()#geom_point()
+
+# sometimes there really is no meaningful relationship between the two variables. 
+# other times, a careful transformation of one or both of the variables can reveal a clear relationship.
+sp2$Latitude.y<-NULL
+sp2$Longitude.y<-NULL
+sp2$Elevation.y<-NULL
+sp_long <- sp2 %>% 
+  pivot_longer(cols = MAT_P:CMD_T,
+               names_to = "variables",
+               values_to = "values")
+ggplot(sp_long, aes(x = values, y = height)) +
+  geom_point() +
+  geom_smooth(method="lm")+
+  facet_wrap(~variables, scales="free_x")+
+  scale_x_log10() + 
+  scale_y_log10("Height")+
+  theme_bw()
 
 # mean differences between provenances and trials
 sp3 <- sp2 %>% mutate(MATdiff = MAT_T-MAT_P,
