@@ -208,7 +208,8 @@ sp_long <- sp2 %>%
   pivot_longer(cols = MAT_P:CMD_T,
                names_to = "variables",
                values_to = "values")
-ggplot(sp_long, aes(x = values, y = height)) +
+# reaction norms
+ggplot(sp_long, aes(x = values, y = height, color=Trial)) +
   geom_point() +
   geom_smooth(method="lm")+
   facet_wrap(~variables, scales="free_x")+
