@@ -86,6 +86,9 @@ summary(sp2$height)
 hist(sp2$height)
 # normal distribution
 summary(sp2)
+
+write.csv(sp2,"~/R/DeltaTraitSDM/Scots_pine/sp_data_height_climateTP.csv")
+sp2 <- read.csv("~/R/DeltaTraitSDM/Scots_pine/sp_data_height_climateTP.csv")
 sp2<-na.omit(sp2)
 
 # look at height distribution per provenance for each trial
