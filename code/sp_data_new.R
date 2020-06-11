@@ -240,10 +240,10 @@ sp3 <- sp2 %>% mutate(MATdiff = MAT_T-MAT_P,
                       Erefdiff = Eref_T-Eref_P,
                       CMDdiff = CMD_T-CMD_P)
 mean_diffs <- sp3 %>% 
-  group_by(Trial,provFam) %>% 
+  group_by(Trial,Provenance) %>% 
   summarise(meanH = mean(height, na.rm=TRUE),
             MAP = mean(MAPdiff),
-            MSP = mean(MSPdiff),
+            MAT = mean(MATdiff),
             TD = mean(TDdiff),
             DD0 = mean(DD0diff),
             DD_18 = mean(DD_18diff),
@@ -259,12 +259,16 @@ mean_diffs <- mean_diffs %>%
   pivot_longer(cols = MAP:CMD,
                names_to = "variables",
                values_to = "meandiff")
+mean_diffs$variables <- factor(mean_diffs$variables)
+mean_diffs$variables <- ordered(mean_diffs$variables, levels = c("MAP","MAT","TD", "DD0" ,"DD_18",
+                                                                 "NFFD","bFFP","FFP","eFFP","PAS",
+                                                                 "Eref","CMD"))
 
 ggplot(mean_diffs, aes(meandiff, meanH, colour = Trial))+
   geom_point()+geom_smooth()+facet_wrap(~variables, scales = "free")+
   theme_bw()+theme(legend.position = "bottom")+
-  xlab("Mean difference per family (Trial climate - Provenance climate)")+
-  ylab("Mean height (mm)")
+  xlab("Climate distance (Trial climate - Provenance climate)")+
+  ylab("Mean height (mm)")+
   geom_smooth(data = mean_diffs, aes(x = meandiff, y = meanH, group = 1), lty = "dashed", method = "lm", colour = "black", se = F)
 
 # height ~ all climate variables
@@ -309,7 +313,7 @@ mean_diffs <- sp3 %>%
   group_by(Trial,Provenance) %>% 
   summarise(meanH = mean(height, na.rm=TRUE),
             MAP = mean(MAPdiff),
-            MSP = mean(MSPdiff),
+            MAT = mean(MSPdiff),
             TD = mean(TDdiff),
             DD0 = mean(DD0diff),
             DD18 = mean(DD_18diff),
